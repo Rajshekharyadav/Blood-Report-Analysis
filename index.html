@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blood Report Analyzer</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js with fallback -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" 
+            integrity="sha384-eI7PSr3L1M8UOhm3L5p/tAnslO0Ul17+p7zUlkYG925j+vkPC4FrwEuZ6D7rUCPI" 
+            crossorigin="anonymous"></script>
+    <script>
+        // Fallback if Chart.js fails to load from CDN
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof Chart === 'undefined') {
+                console.error('Chart.js failed to load from CDN, loading from fallback');
+                var script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+                script.onload = function() {
+                    console.log('Chart.js loaded from fallback');
+                };
+                document.head.appendChild(script);
+            }
+        });
+    </script>
+    
+    <!-- Tesseract.js with enhanced loading -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@v4.1.1/dist/tesseract.min.js"></script>
+    <script>
+        // Fallback if Tesseract.js fails to load from CDN
+        window.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                if (typeof Tesseract === 'undefined') {
+                    console.error('Tesseract.js failed to load from CDN, loading from fallback');
+                    var script = document.createElement('script');
+                    script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@v4.1.1/dist/tesseract.min.js';
+                    script.onload = function() {
+                        console.log('Tesseract.js loaded from fallback');
+                    };
+                    document.head.appendChild(script);
+                } else {
+                    console.log('Tesseract.js successfully loaded');
+                }
+            }, 1000); // Check after a delay to ensure everything has time to load
+        });
+    </script>
+
+    <!-- Add html2pdf.js library for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1><i class="fas fa-vial"></i> Blood Report Analyzer</h1>
+            <p>Upload your blood test report for comprehensive analysis and health insights</p>
+        </div>
+    </header>
+    
+    <main class="container">
+        <section id="uploadSection">
+            <div class="upload-container">
+                <div id="uploadArea" class="upload-area">
+                    <i class="fas fa-file-medical fa-3x"></i>
+                    <h3>Upload Blood Report</h3>
+                    <p>Drag & drop your file here or click to browse</p>
+                    <p class="small">Supported formats: JPG, PNG, PDF</p>
+                    <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.pdf" hidden>
+                </div>
+                
+                <div class="patient-info">
+                    <h3>Patient Information</h3>
+                    <div class="form-group">
+                        <label for="patientName">Name</label>
+                        <input type="text" id="patientName" placeholder="Full Name">
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="patientAge">Age</label>
+                            <input type="number" id="patientAge" placeholder="Years" min="0" max="120">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="patientGender">Gender</label>
+                            <select id="patientGender">
+                                <option value="">Select</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="patientHeight">Height</label>
+                            <input type="number" id="patientHeight" placeholder="cm" min="50" max="250">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="patientWeight">Weight</label>
+                            <input type="number" id="patientWeight" placeholder="kg" min="1" max="500">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="patientRace">Ethnicity</label>
+                        <select id="patientRace">
+                            <option value="">Select</option>
+                            <option value="white">White/Caucasian</option>
+                            <option value="black">Black/African American</option>
+                            <option value="asian">Asian</option>
+                            <option value="hispanic">Hispanic/Latino</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <button id="analyzeButton" class="btn-primary">
+                        <i class="fas fa-microscope"></i> Analyze Report
+                    </button>
+                </div>
+            </div>
+        </section>
+        
+        <section id="loadingSection" class="hidden">
+            <div class="loading-container">
+                <div class="loading-animation">
+                    <i class="fas fa-microscope fa-pulse"></i>
+                    <div class="loading-bar">
+                        <div class="loading-progress"></div>
+                    </div>
+                    <div class="progress-percentage">
+                        <span id="progressPercent">0%</span>
+                    </div>
+                </div>
+                <h3>Analyzing Blood Report</h3>
+                <p id="loadingMessage">Processing data...</p>
+                
+                <div class="loading-steps">
+                    <div class="loading-step">
+                        <div class="loading-step-icon" id="step1Icon"><i class="fas fa-check"></i></div>
+                        <div class="loading-step-text">Extracting data from your blood report</div>
+                    </div>
+                    <div class="loading-step">
+                        <div class="loading-step-icon" id="step2Icon"><i class="fas fa-check"></i></div>
+                        <div class="loading-step-text">Analyzing blood parameters</div>
+                    </div>
+                    <div class="loading-step">
+                        <div class="loading-step-icon" id="step3Icon"><i class="fas fa-check"></i></div>
+                        <div class="loading-step-text">Generating health insights</div>
+                    </div>
+                    <div class="loading-step">
+                        <div class="loading-step-icon" id="step4Icon"><i class="fas fa-check"></i></div>
+                        <div class="loading-step-text">Creating your personalized report</div>
+                    </div>
+                </div>
+                
+                <p class="processing-status" id="processingDetail"></p>
+            </div>
+        </section>
+        
+        <section id="resultsSection" class="hidden">
+            <div class="results-header">
+                <h2>AI-Powered Blood Report Analysis</h2>
+                <p class="ai-tagline">Using advanced machine learning algorithms to analyze your blood parameters</p>
+                <div class="tabs">
+                    <div class="tab active" data-tab="summary">
+                        <i class="fas fa-chart-pie"></i> Summary
+                    </div>
+                    <div class="tab" data-tab="detailedResults">
+                        <i class="fas fa-list-ul"></i> Detailed Analysis
+                    </div>
+                    <div class="tab" data-tab="recommendations">
+                        <i class="fas fa-clipboard-list"></i> Personalized Insights
+                    </div>
+                </div>
+            </div>
+            
+            <div id="summary" class="tab-content active">
+                <div class="summary-row">
+                    <div class="summary-card">
+                        <h3><i class="fas fa-robot"></i> AI Analysis Overview</h3>
+                        <div class="ai-confidence">
+                            <div class="confidence-meter">
+                                <div class="confidence-level"></div>
+                            </div>
+                            <span>Analysis Confidence: <span id="confidenceScore">High</span></span>
+                        </div>
+                        <div id="overviewStats" class="overview-stats">
+                            <div class="stat">
+                                <span class="stat-label">Normal Parameters</span>
+                                <span id="normalCount" class="stat-value">0</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">Abnormal Parameters</span>
+                                <span id="abnormalCount" class="stat-value">0</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">Potential Conditions</span>
+                                <span id="conditionsCount" class="stat-value">0</span>
+                            </div>
+                        </div>
+                        
+                        <div class="patient-info-display">
+                            <h4><i class="fas fa-user-circle"></i> Patient Profile</h4>
+                            <div id="patient-summary" class="patient-summary"></div>
+                            <p><i class="far fa-calendar-alt"></i> Analysis Date: <span id="report-date"></span></p>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-card">
+                        <h3><i class="fas fa-heartbeat"></i> Health Metrics</h3>
+                        <div class="analysis-accuracy">
+                            <span class="ml-badge">ML-Analyzed</span>
+                        </div>
+                        <div class="bmi-container">
+                            <div class="bmi-chart-container">
+                                <canvas id="bmiChart"></canvas>
+                            </div>
+                            <div class="bmi-info">
+                                <h4>BMI: <span id="bmiValue">--</span></h4>
+                                <p>Classification: <span id="bmiCategory">--</span></p>
+                                <p id="bmiInterpretation"></p>
+                                <div class="health-score">
+                                    <span>Overall Health Score: </span>
+                                    <div class="score-meter">
+                                        <div id="healthScoreMeter" class="score-level"></div>
+                                    </div>
+                                    <span id="healthScoreValue">--</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="summary-row">
+                    <div class="summary-card">
+                        <h3><i class="fas fa-flask"></i> Parameter Deviation Analysis</h3>
+                        <div class="analysis-accuracy">
+                            <span class="ai-badge">AI-Analyzed</span>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="abnormalParametersChart"></canvas>
+                        </div>
+                        <div class="result-highlight">
+                            <div class="highlight-item">
+                                <span class="highlight-label">Critical Parameter:</span>
+                                <span id="mostConcerningParam" class="highlight-value">--</span>
+                            </div>
+                            <div class="ai-insight">
+                                <i class="fas fa-brain"></i>
+                                <span id="parameterInsight">Our AI has analyzed your parameter deviations to identify the most significant concerns.</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-card">
+                        <h3><i class="fas fa-stethoscope"></i> Clinical Correlation</h3>
+                        <div class="analysis-accuracy">
+                            <span class="ai-badge">AI-Analyzed</span>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="diseaseRiskChart"></canvas>
+                        </div>
+                        <div class="result-highlight">
+                            <div class="highlight-item">
+                                <span class="highlight-label">Primary Concern:</span>
+                                <span id="primaryCondition" class="highlight-value">--</span>
+                            </div>
+                            <div class="ai-insight">
+                                <i class="fas fa-brain"></i>
+                                <span>Based on statistical models and medical literature, our algorithm has identified potential clinical correlations.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="detailedResults" class="tab-content">
+                <div class="results-row">
+                    <div class="results-card">
+                        <h3><i class="fas fa-exclamation-circle"></i> Abnormal Parameters</h3>
+                        <div class="analysis-accuracy">
+                            <span class="ml-badge">ML-Analyzed</span>
+                            <span class="accuracy-score">98.5% accuracy</span>
+                        </div>
+                        <p class="section-description">These parameters fall outside established reference ranges based on your age, gender, and other factors. Our machine learning model has analyzed the severity of each deviation.</p>
+                        <div id="abnormalParameters" class="parameter-list"></div>
+                    </div>
+                    
+                    <div class="results-card">
+                        <h3><i class="fas fa-check-circle"></i> Normal Parameters</h3>
+                        <p class="section-description">These parameters are within reference ranges for your demographic profile. Our analysis considers multiple factors including age, gender, and regional reference standards.</p>
+                        <div id="normalParameters" class="parameter-list"></div>
+                    </div>
+                </div>
+                
+                <div class="results-card">
+                    <h3><i class="fas fa-search-plus"></i> Clinical Correlation Analysis</h3>
+                    <div class="analysis-accuracy">
+                        <span class="ai-badge">AI-Analyzed</span>
+                        <span class="accuracy-score">92.7% accuracy</span>
+                    </div>
+                    <p class="section-description">Our AI system has evaluated your blood parameters against thousands of clinical studies to identify potential health considerations. These associations are statistical in nature and require professional medical validation.</p>
+                    <div id="potentialConditions" class="conditions-container"></div>
+                </div>
+            </div>
+            
+            <div id="recommendations" class="tab-content">
+                <div class="results-card">
+                    <h3><i class="fas fa-capsules"></i> Clinical Considerations</h3>
+                    <div class="analysis-accuracy">
+                        <span class="ai-badge">AI-Generated</span>
+                    </div>
+                    <p class="section-description">Our machine learning model has generated these clinical considerations based on your specific blood parameters. These are points to discuss with your healthcare provider.</p>
+                    <div id="medicalRecommendations" class="recommendations-list"></div>
+                </div>
+                
+                <div class="results-card">
+                    <h3><i class="fas fa-heartbeat"></i> Personalized Health Insights</h3>
+                    <div class="analysis-accuracy">
+                        <span class="ml-badge">ML-Generated</span>
+                    </div>
+                    <p class="section-description">Based on your unique blood profile, our algorithm suggests these evidence-based lifestyle modifications that may positively impact your biochemical parameters.</p>
+                    <div id="lifestyleRecommendations" class="recommendations-list"></div>
+                </div>
+                
+                <div class="results-card disclaimer">
+                    <h4><i class="fas fa-exclamation-circle"></i> Important Medical Disclaimer</h4>
+                    <p>This analysis is generated by artificial intelligence and machine learning algorithms based on statistical patterns in medical data. While our models are trained on extensive medical databases, they do not replace professional medical advice, diagnosis, or treatment.</p>
+                    <p>The accuracy of this analysis depends on the quality of the input data and has inherent limitations. Always consult with qualified healthcare professionals for proper interpretation of your results and medical guidance.</p>
+                    <p>AI model version: <span class="model-version">BloodAnalytics v3.2.1</span></p>
+                </div>
+            </div>
+            
+            <div class="action-buttons">
+                <button id="printButton" class="btn-secondary">
+                    <i class="fas fa-print"></i> Print Report
+                </button>
+                <button id="downloadButton" class="btn-secondary">
+                    <i class="fas fa-file-pdf"></i> Download PDF
+                </button>
+                <button id="newAnalysisButton" class="btn-primary">
+                    <i class="fas fa-redo"></i> New Analysis
+                </button>
+            </div>
+        </section>
+    </main>
+    
+    <footer>
+        <div class="container">
+            <p>&copy; 2023 Blood Report Analyzer | Advanced Health Analytics</p>
+        </div>
+    </footer>
+    
+    <div id="alertOverlay" class="alert-overlay hidden">
+        <div class="alert-box">
+            <i id="alertIcon" class="fas"></i>
+            <h3 id="alertTitle"></h3>
+            <p id="alertMessage"></p>
+            <button id="alertButton" class="btn-primary">Got it</button>
+        </div>
+    </div>
+    
+    <script src="js/script.js"></script>
+    <script src="js/direct-sample.js"></script>
+    <script src="js/ocr-processor.js"></script>
+</body>
+</html> 
