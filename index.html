@@ -222,12 +222,12 @@
                         </div>
                         <div class="bmi-container">
                             <div class="bmi-chart-container">
-                                <canvas id="bmiChart"></canvas>
+                                <canvas id="healthScoreChart"></canvas>
                             </div>
                             <div class="bmi-info">
-                                <h4>BMI: <span id="bmiValue">--</span></h4>
-                                <p>Classification: <span id="bmiCategory">--</span></p>
-                                <p id="bmiInterpretation"></p>
+                                <h4>Health Score: <span id="healthScoreValue">--</span></h4>
+                                <p>Classification: <span id="healthScoreCategory">--</span></p>
+                                <p id="healthScoreInterpretation"></p>
                                 <div class="health-score">
                                     <span>Overall Health Score: </span>
                                     <div class="score-meter">
@@ -379,8 +379,11 @@
                     <div class="tab-panel active" id="ai-insights-tab">
                         <h4>Key Health Insights</h4>
                         <p class="insights-description">Our AI algorithms have analyzed patterns in your blood parameters to identify the following health insights:</p>
-                        <div class="insights-grid" id="ai-insights-container">
-                            <!-- Insights will be added here dynamically -->
+                        <div class="insights-visualization">
+                            <canvas id="insightsChart"></canvas>
+                        </div>
+                        <div id="mlInsights" class="insights-grid">
+                            <!-- ML insights will be added here dynamically -->
                         </div>
                     </div>
                     

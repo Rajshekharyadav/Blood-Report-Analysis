@@ -1086,21 +1086,28 @@ function isChartJsLoaded() {
     return typeof Chart !== 'undefined';
 }
 
-// Create visualizations for the results with error handling
-function createVisualizations(analysisResults, patientInfo) {
+/**
+ * Create visualizations for the results with error handling
+ * @param {Array} processedData - The processed blood data
+ * @param {Object} diseaseStages - Disease staging results
+ * @param {Object} healthAnalysis - Comprehensive health analysis results
+ */
+function createVisualizations(processedData, diseaseStages, healthAnalysis) {
     // Check if Chart.js is loaded
     if (!isChartJsLoaded()) {
         console.error("Chart.js is not loaded. Visualizations cannot be created.");
         return;
     }
     
-    console.log("Creating visualizations for analysis results");
+    console.log("Creating visualizations for analysis results", { processedData, diseaseStages, healthAnalysis });
     
     try {
         // Create chart for abnormal parameters
         if (document.getElementById('abnormalParametersChart')) {
             try {
-                createAbnormalParametersChart(analysisResults.abnormalValues);
+                const abnormalParams = Array.isArray(processedData) ? 
+                    processedData.filter(param => param.isAbnormal) : [];
+                createAbnormalParametersChart(abnormalParams);
             } catch (error) {
                 console.error("Error creating abnormal parameters chart:", error);
             }
@@ -1109,25 +1116,32 @@ function createVisualizations(analysisResults, patientInfo) {
         }
         
         // Create chart for potential conditions
-        if (document.getElementById('diseaseRiskChart')) {
+        if (document.getElementById('diseaseRiskChart') && diseaseStages) {
             try {
-                createDiseaseRiskChart(analysisResults.potentialConditions);
+                createDiseaseRiskChart(diseaseStages);
             } catch (error) {
                 console.error("Error creating disease risk chart:", error);
             }
         } else {
-            console.warn("diseaseRiskChart element not found, skipping chart creation");
+            console.warn("diseaseRiskChart element not found or no disease stages available");
         }
         
-        // Create health metrics visualization (BMI)
-        if (document.getElementById('bmiChart')) {
+        // Create health score visualization
+        if (document.getElementById('healthScoreChart') && healthAnalysis) {
             try {
-                createHealthMetricsVisualizations(patientInfo);
+                createHealthScoreChart(healthAnalysis);
             } catch (error) {
-                console.error("Error creating health metrics visualizations:", error);
+                console.error("Error creating health score chart:", error);
             }
-        } else {
-            console.warn("bmiChart element not found, skipping chart creation");
+        }
+        
+        // Create insights visualization if we have health analysis data
+        if (document.getElementById('insightsChart') && healthAnalysis && healthAnalysis.insights) {
+            try {
+                createInsightsVisualization(healthAnalysis.insights);
+            } catch (error) {
+                console.error("Error creating insights visualization:", error);
+            }
         }
         
         console.log("Visualizations created successfully");
@@ -1724,10 +1738,39 @@ function determineDiseaseStage(bloodData, patientInfo) {
     return stages;
 }
 
-function createAbnormalParametersChart(abnormalValues) {
-    console.log("Creating abnormal parameters chart with:", abnormalValues);
+/**
+ * Creates a chart displaying abnormal blood parameters and their deviation from normal range
+ * @param {Array} abnormalParams - Array of abnormal parameter objects
+ */
+function createAbnormalParametersChart(abnormalParams) {
+    console.log("Creating abnormal parameters chart with:", abnormalParams);
     
-    if (!abnormalValues || Object.keys(abnormalValues).length === 0) {
+    // Handle both array and object formats for backward compatibility
+    let formattedParams = [];
+    
+    if (Array.isArray(abnormalParams)) {
+        formattedParams = abnormalParams;
+    } else if (abnormalParams && typeof abnormalParams === 'object') {
+        // Convert old format (object) to array format
+        formattedParams = Object.entries(abnormalParams).map(([key, value]) => {
+            if (typeof value === 'number') {
+                return {
+                    name: key,
+                    value: value,
+                    isAbnormal: true
+                };
+            } else if (value && typeof value === 'object') {
+                return {
+                    name: key,
+                    ...value,
+                    isAbnormal: true
+                };
+            }
+            return null;
+        }).filter(param => param !== null);
+    }
+    
+    if (!formattedParams || formattedParams.length === 0) {
         console.log("No abnormal values to display in chart");
         return;
     }
@@ -1758,136 +1801,95 @@ function createAbnormalParametersChart(abnormalValues) {
         return;
     }
     
-    // Extract data for the chart
-    const labels = Object.keys(abnormalValues);
-    
-    // Skip creating chart if no data
-    if (labels.length === 0) {
-        const noDataMessage = document.createElement('div');
-        noDataMessage.className = 'no-data-message';
-        noDataMessage.textContent = 'No abnormal parameters to display';
-        
-        const chartContainer = ctx.closest('.chart-container');
-        if (chartContainer) {
-            // Clear any existing content
-            chartContainer.innerHTML = '';
-            chartContainer.appendChild(noDataMessage);
-        } else {
-            // If can't find container, place message after the canvas
-            const parent = ctx.parentNode;
-            if (parent) {
-                parent.appendChild(noDataMessage);
-            }
-        }
-        return;
-    }
-    
     try {
         const data = [];
         const backgroundColors = [];
         const borderColors = [];
         const formattedLabels = [];
-        const validParameters = [];
+        const tooltipData = [];
         
         // Process each parameter with error handling
-        for (const param of labels) {
+        for (const param of formattedParams) {
             try {
-                // Skip parameters that don't have a value property
-                if (typeof abnormalValues[param] === 'number') {
-                    // Direct values (not objects with status)
-                    console.log(`Processing parameter ${param} with direct value:`, abnormalValues[param]);
-                    // Skip if we don't have reference ranges
-                    if (!bloodTestRanges[param]) {
-                        console.warn(`No reference range for parameter: ${param}`);
-                        continue;
-                    }
-                    
-                    const value = abnormalValues[param];
-                    const { min, max } = bloodTestRanges[param];
-                    
-                    // Skip if the value is within normal range
-                    if (value >= min && value <= max) continue;
-                    
-                    // Calculate percentage deviation from normal range
-                    let percentage;
-                    let status;
-                    if (value < min) {
-                        percentage = ((min - value) / min) * 100;
-                        status = 'low';
-                    } else {
-                        percentage = ((value - max) / max) * 100;
-                        status = 'high';
-                    }
-                    
-                    // Limit to a reasonable range for visualization
-                    percentage = Math.min(Math.abs(percentage), 100);
-                    
-                    validParameters.push(param);
-                    data.push(percentage);
-                    backgroundColors.push(status === 'low' ? 'rgba(54, 162, 235, 0.6)' : 'rgba(255, 99, 132, 0.6)');
-                    borderColors.push(status === 'low' ? 'rgba(54, 162, 235, 1)' : 'rgba(255, 99, 132, 1)');
-                    formattedLabels.push(formatParameterName(param));
-                } else if (abnormalValues[param] && typeof abnormalValues[param].value !== 'undefined') {
-                    // Object with value property
-                    console.log(`Processing parameter ${param} with object:`, abnormalValues[param]);
-                    const value = abnormalValues[param].value;
-                    
-                    // Try to get min/max from the abnormalValues object first
-                    let min, max;
-                    if (abnormalValues[param].normalRange) {
-                        const range = abnormalValues[param].normalRange.split('-');
-                        if (range.length === 2) {
-                            min = parseFloat(range[0]);
-                            max = parseFloat(range[1]);
-                        }
-                    }
-                    
-                    // Fall back to bloodTestRanges if needed
-                    if ((isNaN(min) || isNaN(max)) && bloodTestRanges[param]) {
-                        min = bloodTestRanges[param].min;
-                        max = bloodTestRanges[param].max;
-                    }
-                    
-                    // Skip if we don't have valid min/max
-                    if (isNaN(min) || isNaN(max)) {
-                        console.warn(`Cannot determine reference range for parameter: ${param}`);
-                        continue;
-                    }
-                    
-                    // Get status from the object or determine it
-                    let status = abnormalValues[param].status;
-                    if (!status) {
-                        status = value < min ? 'low' : 'high';
-                    }
-                    
-                    // Calculate percentage deviation from normal range
-                    let percentage;
-                    if (status === 'low') {
-                        percentage = ((min - value) / min) * 100;
-                    } else {
-                        percentage = ((value - max) / max) * 100;
-                    }
-                    
-                    // Limit to a reasonable range for visualization
-                    percentage = Math.min(Math.abs(percentage), 100);
-                    
-                    validParameters.push(param);
-                    data.push(percentage);
-                    backgroundColors.push(status === 'low' ? 'rgba(54, 162, 235, 0.6)' : 'rgba(255, 99, 132, 0.6)');
-                    borderColors.push(status === 'low' ? 'rgba(54, 162, 235, 1)' : 'rgba(255, 99, 132, 1)');
-                    formattedLabels.push(formatParameterName(param));
-                } else {
-                    console.warn(`Invalid parameter format for ${param}:`, abnormalValues[param]);
+                if (!param.isAbnormal) continue;
+                
+                const paramName = param.name;
+                const paramValue = param.value;
+                
+                if (typeof paramValue !== 'number' || isNaN(paramValue)) {
+                    console.warn(`Invalid value for parameter ${paramName}:`, paramValue);
+                    continue;
                 }
+                
+                // Get reference range either from the parameter or from global ranges
+                let min, max, unit;
+                if (param.min !== undefined && param.max !== undefined) {
+                    min = param.min;
+                    max = param.max;
+                    unit = param.unit || '';
+                } else if (bloodTestRanges[paramName]) {
+                    min = bloodTestRanges[paramName].min;
+                    max = bloodTestRanges[paramName].max;
+                    unit = bloodTestRanges[paramName].unit || '';
+                } else {
+                    console.warn(`No reference range for parameter: ${paramName}`);
+                    continue;
+                }
+                
+                // Determine if value is low or high
+                const status = param.status || (paramValue < min ? 'low' : 'high');
+                
+                // Calculate percentage deviation from normal range
+                let percentage;
+                if (status.toLowerCase() === 'low') {
+                    percentage = ((min - paramValue) / min) * 100;
+                } else {
+                    percentage = ((paramValue - max) / max) * 100;
+                }
+                
+                // Limit to a reasonable range for visualization
+                percentage = Math.min(Math.abs(percentage), 100);
+                
+                // Add data for chart
+                data.push(percentage);
+                backgroundColors.push(status.toLowerCase() === 'low' ? 'rgba(54, 162, 235, 0.6)' : 'rgba(255, 99, 132, 0.6)');
+                borderColors.push(status.toLowerCase() === 'low' ? 'rgba(54, 162, 235, 1)' : 'rgba(255, 99, 132, 1)');
+                
+                // Use formatted name if available, otherwise format the parameter name
+                const displayName = param.formattedName || formatParameterName(paramName);
+                formattedLabels.push(displayName);
+                
+                // Store data for tooltip
+                tooltipData.push({
+                    name: displayName,
+                    value: paramValue,
+                    unit: unit,
+                    normalRange: param.normalRange || `${min}-${max}`,
+                    status: status.charAt(0).toUpperCase() + status.slice(1),
+                    deviation: percentage.toFixed(1)
+                });
             } catch (paramError) {
-                console.warn(`Error processing parameter ${param}:`, paramError);
+                console.warn(`Error processing parameter:`, paramError);
                 // Skip this parameter
             }
         }
         
         // If we have no valid data points after filtering, show a message
         if (data.length === 0) {
-            throw new Error("No valid data points for chart");
+            console.warn("No valid data points for chart after filtering");
+            
+            const chartContainer = ctx.closest('.chart-container');
+            if (chartContainer) {
+                // Clear any existing content
+                chartContainer.innerHTML = '';
+                
+                const noDataMessage = document.createElement('div');
+                noDataMessage.className = 'no-data-message';
+                noDataMessage.textContent = 'No abnormal parameters to display';
+                chartContainer.appendChild(noDataMessage);
+            }
+            
+            return;
         }
         
         // Clean up any existing chart
@@ -1944,42 +1946,18 @@ function createAbnormalParametersChart(abnormalValues) {
                             callbacks: {
                                 title: function(context) {
                                     const index = context[0].dataIndex;
-                                    return index >= 0 && index < formattedLabels.length ? formattedLabels[index] : '';
+                                    return index >= 0 && index < tooltipData.length ? tooltipData[index].name : '';
                                 },
                                 label: function(context) {
                                     const index = context.dataIndex;
-                                    if (index < 0 || index >= validParameters.length) return [];
+                                    if (index < 0 || index >= tooltipData.length) return [];
                                     
-                                    // Use validParameters array to get the correct param name
-                                    const param = validParameters[index];
-                                    
-                                    // Get the parameter info
-                                    let value, range, status, unit;
-                                    
-                                    if (typeof abnormalValues[param] === 'number') {
-                                        value = abnormalValues[param];
-                                        range = bloodTestRanges[param] ? 
-                                            `${bloodTestRanges[param].min}-${bloodTestRanges[param].max}` : 'Unknown';
-                                        status = value < (bloodTestRanges[param]?.min || 0) ? 'Low' : 'High';
-                                        unit = bloodTestRanges[param]?.unit || '';
-                                    } else if (abnormalValues[param] && typeof abnormalValues[param].value !== 'undefined') {
-                                        value = abnormalValues[param].value;
-                                        range = abnormalValues[param].normalRange || 
-                                            (bloodTestRanges[param] ? 
-                                                `${bloodTestRanges[param].min}-${bloodTestRanges[param].max}` : 'Unknown');
-                                        status = abnormalValues[param].status ? 
-                                            (abnormalValues[param].status.charAt(0).toUpperCase() + 
-                                             abnormalValues[param].status.slice(1)) : 'Abnormal';
-                                        unit = abnormalValues[param].unit || bloodTestRanges[param]?.unit || '';
-                                    } else {
-                                        return ['Data unavailable'];
-                                    }
-                                    
+                                    const data = tooltipData[index];
                                     return [
-                                        `Value: ${value} ${unit}`, 
-                                        `Normal Range: ${range} ${unit}`, 
-                                        `Status: ${status}`,
-                                        `Deviation: ${context.parsed.y.toFixed(1)}%`
+                                        `Value: ${data.value} ${data.unit}`,
+                                        `Normal Range: ${data.normalRange} ${data.unit}`,
+                                        `Status: ${data.status}`,
+                                        `Deviation: ${data.deviation}%`
                                     ];
                                 }
                             }
@@ -1987,161 +1965,153 @@ function createAbnormalParametersChart(abnormalValues) {
                     }
                 }
             });
+            
+            console.log("Abnormal parameters chart created successfully");
         } else {
-            throw new Error("Chart.js is not available");
+            console.error("Chart.js is not available");
         }
     } catch (error) {
         console.error("Error creating abnormal parameters chart:", error);
-        
-        // Show error message to user
-        const chartContainer = ctx.closest('.chart-container');
-        if (chartContainer) {
-            // Clear any existing content
-            chartContainer.innerHTML = '';
-            
-            const errorMessage = document.createElement('div');
-            errorMessage.className = 'no-data-message';
-            errorMessage.textContent = 'Error creating chart: ' + error.message;
-            chartContainer.appendChild(errorMessage);
-        }
     }
 }
 
-function createDiseaseRiskChart(potentialConditions) {
-    const ctx = document.getElementById('diseaseRiskChart');
+/**
+ * Creates a chart visualizing disease risks from the analysis
+ * @param {Object} diseaseStages - The disease staging data
+ */
+function createDiseaseRiskChart(diseaseStages) {
+    console.log("Creating disease risk chart with:", diseaseStages);
     
-    // Check if chart element exists
-    if (!ctx) {
-        console.error("Error: Cannot find diseaseRiskChart element");
+    if (!diseaseStages || Object.keys(diseaseStages).length === 0) {
+        console.warn("No disease stages to display in chart");
         return;
     }
     
-    // Extract data for the chart - limit to top 5 risks
-    const conditions = Object.keys(potentialConditions)
-        .sort((a, b) => potentialConditions[b].probability - potentialConditions[a].probability)
-        .slice(0, 5);
-    
-    // Skip creating chart if no data
-    if (conditions.length === 0) {
-        const noDataMessage = document.createElement('div');
-        noDataMessage.className = 'no-data-message';
-        noDataMessage.textContent = 'No potential health conditions detected';
-        const parentNode = ctx.parentNode;
-        if (parentNode) {
-            parentNode.appendChild(noDataMessage);
-        }
+    const ctx = document.getElementById('diseaseRiskChart');
+    if (!ctx) {
+        console.error("Disease risk chart element not found");
         return;
     }
     
     try {
-        const probabilities = conditions.map(condition => potentialConditions[condition].probability);
-        
-        // Color code based on severity
-        const backgroundColors = conditions.map(condition => {
-            const severity = potentialConditions[condition].severity;
-            if (severity === 'high') return 'rgba(255, 99, 132, 0.6)';
-            if (severity === 'moderate') return 'rgba(255, 159, 64, 0.6)';
-            return 'rgba(255, 205, 86, 0.6)';
-        });
-        
-        const borderColors = conditions.map(condition => {
-            const severity = potentialConditions[condition].severity;
-            if (severity === 'high') return 'rgba(255, 99, 132, 1)';
-            if (severity === 'moderate') return 'rgba(255, 159, 64, 1)';
-            return 'rgba(255, 205, 86, 1)';
-        });
-        
-        // Format condition names for display
-        const displayLabels = conditions.map(c => {
-            // Display disease staging info if available
-            if (potentialConditions[c].hasStaging) {
-                return `${potentialConditions[c].stageInfo.disease} (${potentialConditions[c].stageInfo.stage})`;
-            }
-            return formatParameterName(c);
-        });
-        
-        if (window.diseaseRiskChart) {
+        // Clean up any existing chart
+        if (window.diseaseRiskChart instanceof Chart) {
             window.diseaseRiskChart.destroy();
         }
         
-        window.diseaseRiskChart = new Chart(ctx.getContext('2d'), {
-            type: 'bar',
+        // Process disease data for the chart
+        const diseases = [];
+        const riskScores = [];
+        const backgroundColors = [];
+        const confidenceValues = [];
+        
+        for (const [diseaseId, data] of Object.entries(diseaseStages)) {
+            // Extract the display name or format the disease id
+            const displayName = data.disease || formatConditionName(diseaseId);
+            diseases.push(displayName);
+            
+            // Extract risk score - use either riskScore or calculate from severity
+            let riskScore = data.riskScore;
+            if (!riskScore && data.severity !== undefined) {
+                // Convert severity to risk score
+                riskScore = data.severity * 25; // 1 -> 25, 2 -> 50, 3 -> 75, 4 -> 100
+            }
+            riskScores.push(riskScore || 50); // Default if no risk score available
+            
+            // Extract confidence value
+            confidenceValues.push(data.confidence ? Math.round(data.confidence * 100) : 70);
+            
+            // Set color based on severity
+            let color;
+            if (data.severity >= 3 || riskScore >= 75) {
+                color = 'rgba(235, 83, 88, 0.7)'; // High risk (red)
+            } else if (data.severity >= 2 || riskScore >= 50) {
+                color = 'rgba(249, 200, 14, 0.7)'; // Moderate risk (yellow)
+            } else {
+                color = 'rgba(103, 171, 159, 0.7)'; // Low risk (green)
+            }
+            backgroundColors.push(color);
+        }
+        
+        if (diseases.length === 0) {
+            console.warn("No disease data to display");
+            return;
+        }
+        
+        // Create the chart
+        window.diseaseRiskChart = new Chart(ctx, {
+            type: 'polarArea',
             data: {
-                labels: displayLabels,
+                labels: diseases,
                 datasets: [{
-                    label: 'Risk Level (%)',
-                    data: probabilities,
+                    data: riskScores,
                     backgroundColor: backgroundColors,
-                    borderColor: borderColors,
-                    borderWidth: 1
+                    borderWidth: 1,
+                    borderColor: backgroundColors.map(color => color.replace('0.7', '1'))
                 }]
             },
             options: {
-                indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    x: {
+                    r: {
                         beginAtZero: true,
                         max: 100,
-                        title: {
-                            display: true,
-                            text: 'Risk Level (%)'
-                        },
                         ticks: {
-                            callback: function(value) {
-                                return value + '%';
-                            }
-                        }
-                    },
-                    y: {
-                        title: {
-                            display: true,
-                            text: 'Potential Conditions'
+                            stepSize: 25,
+                            display: false
                         }
                     }
                 },
                 plugins: {
                     legend: {
-                        display: false
+                        position: 'right',
+                        labels: {
+                            boxWidth: 15,
+                            padding: 15
+                        }
                     },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
-                                const condition = conditions[context.dataIndex];
-                                const info = potentialConditions[condition];
+                                const index = context.dataIndex;
+                                const disease = diseases[index];
+                                const riskScore = riskScores[index];
+                                const confidence = confidenceValues[index];
                                 
-                                const lines = [`Risk Level: ${info.probability}%`];
-                                
-                                if (info.hasStaging) {
-                                    lines.push(
-                                        `Disease: ${info.stageInfo.disease}`,
-                                        `Stage: ${info.stageInfo.stage}`,
-                                        `Criteria: ${info.stageInfo.criteria}`
-                                    );
-                                } else {
-                                    lines.push(
-                                        `Severity: ${info.severity.charAt(0).toUpperCase() + info.severity.slice(1)}`,
-                                        `${info.description || 'No description available'}`
-                                    );
+                                let riskLevel = 'Low';
+                                if (riskScore >= 75) {
+                                    riskLevel = 'High';
+                                } else if (riskScore >= 50) {
+                                    riskLevel = 'Moderate';
                                 }
                                 
-                                return lines;
+                                return [
+                                    `${disease}`,
+                                    `Risk Level: ${riskLevel} (${riskScore}%)`,
+                                    `Confidence: ${confidence}%`
+                                ];
                             }
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Disease Risk Assessment',
+                        font: {
+                            size: 16
+                        },
+                        padding: {
+                            top: 10,
+                            bottom: 20
                         }
                     }
                 }
             }
         });
+        
+        console.log("Disease risk chart created successfully");
     } catch (error) {
         console.error("Error creating disease risk chart:", error);
-        const parentNode = ctx.parentNode;
-        if (parentNode) {
-            const errorMessage = document.createElement('div');
-            errorMessage.className = 'no-data-message';
-            errorMessage.textContent = 'Error creating chart. Please try again.';
-            parentNode.appendChild(errorMessage);
-        }
     }
 }
 
@@ -3383,5 +3353,1115 @@ function setupTabSwitching() {
         console.log("Tab switching setup complete");
     } catch (error) {
         console.error("Error setting up tab switching:", error);
+    }
+}
+
+/**
+ * Prepare the blood data for display by adding reference ranges and identifying abnormal values
+ * @param {Object} bloodData - The blood data to prepare
+ * @returns {Array} Processed blood data with reference ranges and abnormal flags
+ */
+function prepareBloodDataForDisplay(bloodData) {
+    console.log("Preparing blood data for display:", bloodData);
+    
+    if (!bloodData || Object.keys(bloodData).length === 0) {
+        console.error("No blood data to prepare");
+        return [];
+    }
+    
+    const processedData = [];
+    
+    // Make sure bloodTestRanges is available
+    if (typeof bloodTestRanges === 'undefined' || !bloodTestRanges) {
+        console.error("Reference ranges not available for blood data preparation");
+        // Basic fallback processing if we don't have reference ranges
+        return Object.entries(bloodData).map(([key, value]) => {
+            return {
+                name: key,
+                value: value,
+                isAbnormal: false, // Default to not abnormal without reference ranges
+                status: "unknown"
+            };
+        });
+    }
+    
+    // Process each parameter
+    for (const [param, value] of Object.entries(bloodData)) {
+        try {
+            // Skip non-numeric values
+            if (typeof value !== 'number' || isNaN(value)) {
+                console.warn(`Skipping non-numeric parameter value: ${param} = ${value}`);
+                continue;
+            }
+            
+            // Get reference range if available
+            const range = bloodTestRanges[param];
+            let isAbnormal = false;
+            let status = "normal";
+            let deviationPercent = 0;
+            
+            if (range) {
+                const { min, max, unit, description } = range;
+                
+                // Determine if abnormal
+                if (value < min) {
+                    isAbnormal = true;
+                    status = "low";
+                    deviationPercent = ((min - value) / min) * 100;
+                } else if (value > max) {
+                    isAbnormal = true;
+                    status = "high";
+                    deviationPercent = ((value - max) / max) * 100;
+                }
+                
+                // Determine severity based on deviation
+                let severity = "mild";
+                if (deviationPercent > 50) {
+                    severity = "high";
+                } else if (deviationPercent > 20) {
+                    severity = "moderate";
+                }
+                
+                // Add to processed data
+                processedData.push({
+                    name: param,
+                    value: value,
+                    min: min,
+                    max: max,
+                    unit: unit || "",
+                    description: description || formatParameterName(param),
+                    isAbnormal: isAbnormal,
+                    status: status,
+                    severity: severity,
+                    deviationPercent: deviationPercent.toFixed(1),
+                    normalRange: `${min}-${max}`,
+                    formattedName: formatParameterName(param)
+                });
+            } else {
+                // Handle parameters without reference ranges
+                console.warn(`Reference range not found for parameter: ${param}`);
+                processedData.push({
+                    name: param,
+                    value: value,
+                    isAbnormal: false, // Default to not abnormal without reference range
+                    status: "unknown",
+                    formattedName: formatParameterName(param)
+                });
+            }
+        } catch (error) {
+            console.error(`Error processing parameter ${param}:`, error);
+        }
+    }
+    
+    // Sort abnormal parameters first, then alphabetically
+    processedData.sort((a, b) => {
+        // First by abnormal status
+        if (a.isAbnormal && !b.isAbnormal) return -1;
+        if (!a.isAbnormal && b.isAbnormal) return 1;
+        
+        // Then by severity if both abnormal
+        if (a.isAbnormal && b.isAbnormal) {
+            const severityOrder = { high: 0, moderate: 1, mild: 2 };
+            if (severityOrder[a.severity] < severityOrder[b.severity]) return -1;
+            if (severityOrder[a.severity] > severityOrder[b.severity]) return 1;
+        }
+        
+        // Lastly by name alphabetically
+        return a.formattedName.localeCompare(b.formattedName);
+    });
+    
+    console.log("Processed data:", processedData);
+    return processedData;
+}
+
+/**
+ * Update the results display with processed blood data
+ * @param {Array} processedData - The processed blood data
+ * @param {Object} diseaseStages - The disease staging information
+ * @param {Object} healthAnalysis - The health analysis results
+ */
+function updateResultsDisplay(processedData, diseaseStages, healthAnalysis) {
+    console.log("Updating results display with:", { processedData, diseaseStages, healthAnalysis });
+    
+    // Get container elements
+    const abnormalParamsContainer = document.getElementById('abnormalParameters');
+    const normalParamsContainer = document.getElementById('normalParameters');
+    const potentialConditionsContainer = document.getElementById('potentialConditions');
+    const medicalRecommendationsContainer = document.getElementById('medicalRecommendations');
+    const lifestyleRecommendationsContainer = document.getElementById('lifestyleRecommendations');
+    
+    // Clear containers
+    if (abnormalParamsContainer) abnormalParamsContainer.innerHTML = '';
+    if (normalParamsContainer) normalParamsContainer.innerHTML = '';
+    if (potentialConditionsContainer) potentialConditionsContainer.innerHTML = '';
+    if (medicalRecommendationsContainer) medicalRecommendationsContainer.innerHTML = '';
+    if (lifestyleRecommendationsContainer) lifestyleRecommendationsContainer.innerHTML = '';
+    
+    // Update the health score if available
+    if (healthAnalysis && healthAnalysis.overallHealthScore) {
+        const healthScoreValue = document.getElementById('healthScoreValue');
+        const healthScoreMeter = document.getElementById('healthScoreMeter');
+        
+        if (healthScoreValue) {
+            healthScoreValue.textContent = healthAnalysis.overallHealthScore;
+            
+            // Set color based on score
+            if (healthAnalysis.overallHealthScore >= 80) {
+                healthScoreValue.className = 'health-score-value good';
+            } else if (healthAnalysis.overallHealthScore >= 60) {
+                healthScoreValue.className = 'health-score-value moderate';
+            } else {
+                healthScoreValue.className = 'health-score-value poor';
+            }
+        }
+        
+        if (healthScoreMeter) {
+            healthScoreMeter.style.width = `${healthAnalysis.overallHealthScore}%`;
+            
+            // Set color based on score
+            if (healthAnalysis.overallHealthScore >= 80) {
+                healthScoreMeter.className = 'score-level good';
+            } else if (healthAnalysis.overallHealthScore >= 60) {
+                healthScoreMeter.className = 'score-level moderate';
+            } else {
+                healthScoreMeter.className = 'score-level poor';
+            }
+        }
+    }
+    
+    // Display abnormal parameters
+    if (abnormalParamsContainer) {
+        const abnormalParams = processedData.filter(param => param.isAbnormal);
+        
+        if (abnormalParams.length > 0) {
+            abnormalParams.forEach(param => {
+                abnormalParamsContainer.innerHTML += createAbnormalParameterCard(param);
+            });
+        } else {
+            abnormalParamsContainer.innerHTML = '<p class="no-data-message">No abnormal parameters detected.</p>';
+        }
+    }
+    
+    // Display normal parameters
+    if (normalParamsContainer) {
+        const normalParams = processedData.filter(param => !param.isAbnormal);
+        
+        if (normalParams.length > 0) {
+            normalParams.forEach(param => {
+                normalParamsContainer.innerHTML += createNormalParameterCard(param);
+            });
+        } else {
+            normalParamsContainer.innerHTML = '<p class="no-data-message">No normal parameters detected.</p>';
+        }
+    }
+    
+    // Display potential health conditions
+    if (potentialConditionsContainer && diseaseStages) {
+        if (Object.keys(diseaseStages).length > 0) {
+            for (const [condition, info] of Object.entries(diseaseStages)) {
+                potentialConditionsContainer.innerHTML += createConditionCard(condition, info);
+            }
+        } else {
+            potentialConditionsContainer.innerHTML = '<p class="no-data-message">No potential health conditions detected.</p>';
+        }
+    }
+    
+    // Display recommendations
+    if (medicalRecommendationsContainer || lifestyleRecommendationsContainer) {
+        // Generate recommendations if needed
+        let recommendations = [];
+        let lifestyleRecs = [];
+        
+        if (healthAnalysis && healthAnalysis.recommendations) {
+            // Use recommendations from health analysis if available
+            recommendations = healthAnalysis.recommendations || [];
+            lifestyleRecs = healthAnalysis.lifestyleRecommendations || [];
+        } else {
+            // Generate from disease stages and processed data
+            const abnormalParams = processedData.filter(param => param.isAbnormal);
+            recommendations = generateRecommendations(diseaseStages, abnormalParams, {});
+            lifestyleRecs = generateLifestyleRecommendations(diseaseStages, {});
+        }
+        
+        // Display medical recommendations
+        if (medicalRecommendationsContainer) {
+            if (recommendations.length > 0) {
+                const recommendationsList = document.createElement('ul');
+                recommendationsList.className = 'recommendations-list';
+                
+                recommendations.forEach(rec => {
+                    const item = document.createElement('li');
+                    item.className = 'recommendation-item';
+                    item.innerHTML = `
+                        <div class="recommendation-content">
+                            <span class="recommendation-icon"><i class="fas fa-check-circle"></i></span>
+                            <span class="recommendation-text">${rec}</span>
+                        </div>
+                    `;
+                    recommendationsList.appendChild(item);
+                });
+                
+                medicalRecommendationsContainer.appendChild(recommendationsList);
+            } else {
+                medicalRecommendationsContainer.innerHTML = '<p class="no-data-message">No specific medical recommendations available.</p>';
+            }
+        }
+        
+        // Display lifestyle recommendations
+        if (lifestyleRecommendationsContainer) {
+            if (lifestyleRecs.length > 0) {
+                const recommendationsList = document.createElement('ul');
+                recommendationsList.className = 'recommendations-list';
+                
+                lifestyleRecs.forEach(rec => {
+                    const item = document.createElement('li');
+                    item.className = 'recommendation-item';
+                    item.innerHTML = `
+                        <div class="recommendation-content">
+                            <span class="recommendation-icon"><i class="fas fa-leaf"></i></span>
+                            <span class="recommendation-text">${rec}</span>
+                        </div>
+                    `;
+                    recommendationsList.appendChild(item);
+                });
+                
+                lifestyleRecommendationsContainer.appendChild(recommendationsList);
+            } else {
+                lifestyleRecommendationsContainer.innerHTML = '<p class="no-data-message">No specific lifestyle recommendations available.</p>';
+            }
+        }
+    }
+    
+    // Update overview statistics
+    updateBloodCountStats(processedData);
+    
+    // Update most concerning parameter
+    const mostConcerningParam = findMostConcerningParameter(processedData);
+    const mostConcerningParamElement = document.getElementById('mostConcerningParam');
+    if (mostConcerningParamElement && mostConcerningParam) {
+        mostConcerningParamElement.textContent = mostConcerningParam.formattedName;
+        mostConcerningParamElement.className = `highlight-value status-${mostConcerningParam.status}`;
+    }
+    
+    // Update primary condition
+    const primaryCondition = findPrimaryCondition(diseaseStages);
+    const primaryConditionElement = document.getElementById('primaryCondition');
+    if (primaryConditionElement && primaryCondition) {
+        primaryConditionElement.textContent = primaryCondition.displayName;
+        primaryConditionElement.className = `highlight-value severity-${primaryCondition.severity}`;
+    }
+    
+    // Update confidence score
+    const confidenceScore = document.getElementById('confidenceScore');
+    if (confidenceScore) {
+        const score = calculateOverallConfidence(diseaseStages);
+        confidenceScore.textContent = score >= 0.8 ? 'High' : score >= 0.6 ? 'Medium' : 'Low';
+    }
+}
+
+/**
+ * Create a card for an abnormal parameter
+ * @param {Object} param - The parameter data
+ * @returns {string} HTML for the parameter card
+ */
+function createAbnormalParameterCard(param) {
+    const severityClass = `severity-${param.severity || 'low'}`;
+    const statusClass = `status-${param.status || 'abnormal'}`;
+    
+    return `
+        <div class="parameter abnormal ${statusClass} ${severityClass}">
+            <div class="parameter-header">
+                <h4>${param.formattedName || formatParameterName(param.name)}</h4>
+                <span class="severity-badge ${severityClass}">${param.severity ? capitalizeFirst(param.severity) : 'Abnormal'}</span>
+            </div>
+            <div class="parameter-value">
+                <span class="value ${statusClass}">${param.value} ${param.unit || ''}</span>
+                <span class="normal-range">Normal: ${param.normalRange || `${param.min}-${param.max}`} ${param.unit || ''}</span>
+            </div>
+            <div class="parameter-info">
+                <p class="deviation">Deviation: ${param.deviationPercent || ''}%</p>
+                <p class="description">${param.description || ''}</p>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Create a card for a normal parameter
+ * @param {Object} param - The parameter data
+ * @returns {string} HTML for the parameter card
+ */
+function createNormalParameterCard(param) {
+    return `
+        <div class="parameter normal">
+            <div class="parameter-header">
+                <h4>${param.formattedName || formatParameterName(param.name)}</h4>
+                <span class="status-badge normal">Normal</span>
+            </div>
+            <div class="parameter-value">
+                <span class="value">${param.value} ${param.unit || ''}</span>
+                ${param.normalRange ? `<span class="normal-range">Range: ${param.normalRange} ${param.unit || ''}</span>` : ''}
+            </div>
+            ${param.description ? `<p class="description">${param.description}</p>` : ''}
+        </div>
+    `;
+}
+
+/**
+ * Create a card for a health condition
+ * @param {string} condition - The condition name
+ * @param {Object} info - The condition data
+ * @returns {string} HTML for the condition card
+ */
+function createConditionCard(condition, info) {
+    // Format condition name for display
+    const displayName = info.disease || formatConditionName(condition);
+    
+    // Set severity class
+    let severityClass = 'severity-low';
+    if (typeof info.severity === 'number') {
+        severityClass = info.severity >= 3 ? 'severity-high' : 
+                       info.severity >= 2 ? 'severity-moderate' : 'severity-low';
+    } else if (info.severity) {
+        severityClass = `severity-${info.severity.toLowerCase()}`;
+    }
+    
+    // Calculate confidence percentage
+    const confidencePercent = info.confidence ? Math.round(info.confidence * 100) : 
+                             info.riskPercentage || 
+                             (info.riskScore ? Math.min(Math.round(info.riskScore), 100) : 70);
+    
+    // Format recommendations
+    let recommendationsHtml = '';
+    if (info.recommendations && info.recommendations.length > 0) {
+        recommendationsHtml = '<div class="condition-recommendations"><h5>Recommendations:</h5><ul>';
+        info.recommendations.slice(0, 3).forEach(rec => {
+            recommendationsHtml += `<li>${rec}</li>`;
+        });
+        recommendationsHtml += '</ul></div>';
+    }
+    
+    return `
+        <div class="condition-card ${severityClass}">
+            <div class="condition-header">
+                <h4>${displayName}</h4>
+                <div class="condition-confidence">
+                    <span class="confidence-value">${confidencePercent}%</span>
+                    <span class="confidence-label">confidence</span>
+                </div>
+            </div>
+            <div class="condition-details">
+                <div class="condition-stage">
+                    <span class="stage-badge ${severityClass}">${info.stage || (info.severity === 2 ? 'Moderate' : info.severity === 3 ? 'Severe' : 'Mild')}</span>
+                </div>
+                <p class="condition-description">${info.interpretation || info.description || ''}</p>
+            </div>
+            ${recommendationsHtml}
+        </div>
+    `;
+}
+
+/**
+ * Find the most concerning parameter from the processed data
+ * @param {Array} processedData - The processed blood data
+ * @returns {Object} The most concerning parameter
+ */
+function findMostConcerningParameter(processedData) {
+    if (!processedData || processedData.length === 0) return null;
+    
+    // Filter to abnormal parameters
+    const abnormalParams = processedData.filter(param => param.isAbnormal);
+    if (abnormalParams.length === 0) return null;
+    
+    // Sort by severity and deviation percent
+    abnormalParams.sort((a, b) => {
+        // Sort by severity first
+        const severityOrder = { high: 3, moderate: 2, mild: 1 };
+        const aSeverity = severityOrder[a.severity] || 0;
+        const bSeverity = severityOrder[b.severity] || 0;
+        
+        if (aSeverity !== bSeverity) {
+            return bSeverity - aSeverity; // Higher severity first
+        }
+        
+        // Then by deviation percent
+        const aDeviation = parseFloat(a.deviationPercent || 0);
+        const bDeviation = parseFloat(b.deviationPercent || 0);
+        return bDeviation - aDeviation; // Higher deviation first
+    });
+    
+    return abnormalParams[0];
+}
+
+/**
+ * Find the primary health condition from disease stages
+ * @param {Object} diseaseStages - The disease staging data
+ * @returns {Object} The primary condition
+ */
+function findPrimaryCondition(diseaseStages) {
+    if (!diseaseStages || Object.keys(diseaseStages).length === 0) return null;
+    
+    // Convert to array for sorting
+    const conditions = Object.entries(diseaseStages).map(([key, value]) => {
+        return {
+            id: key,
+            displayName: value.disease || formatConditionName(key),
+            severity: value.severity || 1,
+            confidence: value.confidence || 0.7,
+            riskScore: value.riskScore || 0
+        };
+    });
+    
+    // Sort by severity and confidence
+    conditions.sort((a, b) => {
+        if (a.severity !== b.severity) {
+            return b.severity - a.severity; // Higher severity first
+        }
+        return b.confidence - a.confidence; // Higher confidence first
+    });
+    
+    return conditions[0];
+}
+
+/**
+ * Calculate the overall confidence of the analysis
+ * @param {Object} diseaseStages - The disease staging data
+ * @returns {number} The overall confidence score (0-1)
+ */
+function calculateOverallConfidence(diseaseStages) {
+    if (!diseaseStages || Object.keys(diseaseStages).length === 0) return 0.7;
+    
+    // Calculate average confidence of all conditions
+    let totalConfidence = 0;
+    let count = 0;
+    
+    for (const condition of Object.values(diseaseStages)) {
+        if (condition.confidence) {
+            totalConfidence += condition.confidence;
+            count++;
+        }
+    }
+    
+    return count > 0 ? totalConfidence / count : 0.7;
+}
+
+/**
+ * Format a condition name for display
+ * @param {string} condition - The condition name
+ * @returns {string} Formatted condition name
+ */
+function formatConditionName(condition) {
+    if (!condition) return 'Unknown Condition';
+    
+    // Handle camelCase
+    const spacedCondition = condition.replace(/([A-Z])/g, ' $1');
+    
+    // Capitalize first letter
+    return spacedCondition.charAt(0).toUpperCase() + spacedCondition.slice(1);
+}
+
+/**
+ * Capitalize the first letter of a string
+ * @param {string} string - The string to capitalize
+ * @returns {string} Capitalized string
+ */
+function capitalizeFirst(string) {
+    if (!string) return '';
+    return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+/**
+ * Perform advanced multi-factor health analysis using blood data and patient information
+ * This function provides a comprehensive health analysis with AI-inspired insights
+ * @param {Object} bloodData - The blood test parameters
+ * @param {Object} patientInfo - The patient information (age, gender, etc.)
+ * @param {Object} diseaseStages - The disease staging results
+ * @returns {Object} Comprehensive health analysis with insights, predictions, and recommendations
+ */
+function performMultiFactorHealthAnalysis(bloodData, patientInfo, diseaseStages) {
+    console.log("Performing multi-factor health analysis...");
+    console.log("Patient info:", patientInfo);
+    console.log("Disease stages:", diseaseStages);
+    
+    // Initialize the analysis results
+    const analysis = {
+        overallHealthScore: 0,
+        confidenceLevel: 0,
+        insights: [],
+        correlations: [],
+        predictions: [],
+        recommendationPriority: [],
+        recommendations: [],
+        lifestyleRecommendations: []
+    };
+    
+    try {
+        // Extract key patient demographics for risk calculations
+        const age = patientInfo.age || 45;
+        const gender = patientInfo.gender || 'male';
+        const isMale = gender.toLowerCase() === 'male';
+        const height = patientInfo.height || 170; // in cm
+        const weight = patientInfo.weight || 70; // in kg
+        
+        // Calculate BMI
+        const bmi = weight / Math.pow(height/100, 2);
+        const isBmiHigh = bmi >= 25;
+        const isBmiVeryHigh = bmi >= 30;
+        
+        // Extract key blood parameters with defaults if missing
+        const bloodParams = {
+            // CBC
+            hgb: bloodData.hemoglobin || 0,
+            hct: bloodData.hematocrit || 0,
+            wbc: bloodData.wbc || 0,
+            rbc: bloodData.rbc || 0,
+            plt: bloodData.platelets || 0,
+            
+            // Metabolic
+            glu: bloodData.glucose || 0,
+            hba1c: bloodData.hba1c || 0,
+            
+            // Lipids
+            chol: bloodData.cholesterol || 0,
+            ldl: bloodData.ldl || 0,
+            hdl: bloodData.hdl || 0,
+            tg: bloodData.triglycerides || 0,
+            
+            // Kidney
+            cre: bloodData.creatinine || 0,
+            urea: bloodData.urea || 0,
+            ua: bloodData.uricAcid || 0,
+            
+            // Liver
+            alt: bloodData.alt || 0,
+            ast: bloodData.ast || 0,
+            alp: bloodData.alp || 0,
+            bilirubin: bloodData.bilirubin || 0,
+            albumin: bloodData.albumin || 0,
+            
+            // Electrolytes
+            sodium: bloodData.sodium || 0,
+            potassium: bloodData.potassium || 0,
+            calcium: bloodData.calcium || 0
+        };
+        
+        // Calculate overall health score based on multiple factors
+        let healthScore = 80; // Start with a baseline score of 80 (good health)
+        let abnormalCount = 0;
+        let totalParameterCount = 0;
+        let confidencePoints = 70; // Base confidence level
+        
+        // Evaluate each parameter if we have a reference range
+        if (typeof bloodTestRanges !== 'undefined') {
+            for (const [param, value] of Object.entries(bloodData)) {
+                if (bloodTestRanges[param] && typeof value === 'number') {
+                    totalParameterCount++;
+                    
+                    const { min, max } = bloodTestRanges[param];
+                    if (value < min || value > max) {
+                        abnormalCount++;
+                        
+                        // Calculate deviation percentage
+                        const deviation = value < min ? 
+                            ((min - value) / min) * 100 : 
+                            ((value - max) / max) * 100;
+                        
+                        // Reduce health score based on deviation severity
+                        if (deviation > 50) {
+                            healthScore -= 5; // Severe deviation
+                        } else if (deviation > 20) {
+                            healthScore -= 3; // Moderate deviation
+                        } else {
+                            healthScore -= 1; // Mild deviation
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Adjust health score based on disease stages
+        if (diseaseStages) {
+            const diseaseCount = Object.keys(diseaseStages).length;
+            
+            if (diseaseCount > 0) {
+                // Reduce score based on disease count
+                healthScore -= diseaseCount * 3;
+                
+                // Further reduction based on disease severity
+                for (const disease of Object.values(diseaseStages)) {
+                    if (disease.severity >= 3) {
+                        healthScore -= 8; // Severe condition
+                    } else if (disease.severity >= 2) {
+                        healthScore -= 5; // Moderate condition
+                    } else {
+                        healthScore -= 2; // Mild condition
+                    }
+                }
+            }
+        }
+        
+        // Adjust health score based on BMI
+        if (isBmiVeryHigh) {
+            healthScore -= 5;
+        } else if (isBmiHigh) {
+            healthScore -= 2;
+        }
+        
+        // Age adjustment (more parameters abnormal = more concerning in older patients)
+        if (age > 60 && abnormalCount > 0) {
+            healthScore -= abnormalCount * 0.5;
+        }
+        
+        // Ensure health score is within 0-100 range
+        analysis.overallHealthScore = Math.max(0, Math.min(100, Math.round(healthScore)));
+        
+        // Calculate confidence level
+        if (totalParameterCount >= 15) {
+            confidencePoints += 20; // High confidence with many parameters
+        } else if (totalParameterCount >= 8) {
+            confidencePoints += 10; // Moderate confidence
+        }
+        
+        if (diseaseStages && Object.keys(diseaseStages).length > 0) {
+            confidencePoints += 5; // Higher confidence with identified conditions
+        }
+        
+        // Adjust for missing key parameters
+        const keyParams = ['hemoglobin', 'glucose', 'creatinine', 'alt'];
+        const missingKeyParams = keyParams.filter(param => !bloodData[param]).length;
+        confidencePoints -= missingKeyParams * 5;
+        
+        // Ensure confidence is within 0-100 range
+        analysis.confidenceLevel = Math.max(40, Math.min(95, confidencePoints));
+        
+        // Generate health insights
+        if (bloodParams.glu > 0) {
+            if (bloodParams.glu >= 126) {
+                analysis.insights.push({
+                    title: "Elevated Blood Glucose",
+                    description: "Your blood glucose level is significantly elevated, which is consistent with diabetes. This requires medical attention.",
+                    impactLevel: 3,
+                    parameters: { glucose: bloodParams.glu }
+                });
+            } else if (bloodParams.glu >= 100 && bloodParams.glu < 126) {
+                analysis.insights.push({
+                    title: "Pre-diabetic Blood Glucose",
+                    description: "Your blood glucose level is in the pre-diabetic range. This suggests increased risk for developing diabetes.",
+                    impactLevel: 2,
+                    parameters: { glucose: bloodParams.glu }
+                });
+            }
+        }
+        
+        // Lipid insights
+        if (bloodParams.ldl > 0 && bloodParams.hdl > 0) {
+            if (bloodParams.ldl > 130 && bloodParams.hdl < 40) {
+                analysis.insights.push({
+                    title: "Unfavorable Cholesterol Profile",
+                    description: "Both elevated LDL ('bad' cholesterol) and low HDL ('good' cholesterol) significantly increase cardiovascular risk.",
+                    impactLevel: 3,
+                    parameters: { ldl: bloodParams.ldl, hdl: bloodParams.hdl }
+                });
+            } else if (bloodParams.ldl > 130) {
+                analysis.insights.push({
+                    title: "Elevated LDL Cholesterol",
+                    description: "Your LDL ('bad' cholesterol) level is above the desirable range, which may increase cardiovascular risk.",
+                    impactLevel: 2,
+                    parameters: { ldl: bloodParams.ldl }
+                });
+            } else if (bloodParams.hdl < 40) {
+                analysis.insights.push({
+                    title: "Low HDL Cholesterol",
+                    description: "Your HDL ('good' cholesterol) level is below the recommended range. HDL helps remove other forms of cholesterol from your bloodstream.",
+                    impactLevel: 2,
+                    parameters: { hdl: bloodParams.hdl }
+                });
+            }
+        }
+        
+        // Anemia insights
+        if (bloodParams.hgb > 0) {
+            const isLow = (patientInfo.gender === 'male' && bloodParams.hgb < 13.5) || 
+                         (patientInfo.gender === 'female' && bloodParams.hgb < 12.0);
+            
+            if (isLow) {
+                const severelyLow = (patientInfo.gender === 'male' && bloodParams.hgb < 10.0) || 
+                                   (patientInfo.gender === 'female' && bloodParams.hgb < 9.0);
+                
+                analysis.insights.push({
+                    title: severelyLow ? "Significant Anemia" : "Mild Anemia",
+                    description: severelyLow ? 
+                        "Your hemoglobin level is significantly below normal range, indicating moderate to severe anemia. This requires medical attention." : 
+                        "Your hemoglobin level is slightly below normal range, suggesting mild anemia.",
+                    impactLevel: severelyLow ? 3 : 2,
+                    parameters: { hemoglobin: bloodParams.hgb }
+                });
+            }
+        }
+        
+        // Generate typical recommendations
+        analysis.recommendations = [
+            "Schedule a follow-up appointment with your healthcare provider to discuss these results.",
+            "Maintain a balanced diet rich in fruits, vegetables, whole grains, and lean proteins.",
+            "Stay hydrated by drinking enough water throughout the day.",
+            "Get regular physical activity appropriate for your health status.",
+            "Ensure you get adequate sleep (7-9 hours for most adults)."
+        ];
+        
+        // Generate lifestyle recommendations
+        analysis.lifestyleRecommendations = [
+            "Consider consulting with a registered dietitian for a personalized nutrition plan",
+            "Aim for at least 150 minutes of moderate-intensity exercise per week",
+            "Practice stress management techniques such as meditation, deep breathing, or yoga",
+            "Ensure you get 7-9 hours of quality sleep each night",
+            "Stay socially connected with friends, family, and community"
+        ];
+            
+        return analysis;
+    } catch (error) {
+        console.error("Error performing health analysis:", error);
+        
+        // Return basic analysis on error
+        return {
+            overallHealthScore: 70,
+            confidenceLevel: 60,
+            insights: [{
+                title: "Analysis Limited",
+                description: "Some parameters couldn't be analyzed due to technical limitations.",
+                impactLevel: 1
+            }],
+            recommendations: [
+                "Consult with a healthcare provider for a complete evaluation.",
+                "Consider getting comprehensive blood tests for a more accurate analysis."
+            ]
+        };
+    }
+}
+
+/**
+ * Creates a health score visualization using Chart.js
+ * @param {Object} healthAnalysis - The health analysis data
+ */
+function createHealthScoreChart(healthAnalysis) {
+    if (!healthAnalysis || typeof healthAnalysis.overallHealthScore !== 'number') {
+        console.warn("Cannot create health score chart: Invalid health analysis data");
+        return;
+    }
+    
+    const chartCanvas = document.getElementById('healthScoreChart');
+    if (!chartCanvas) {
+        console.warn("Health score chart canvas not found");
+        return;
+    }
+    
+    // Clear any existing chart
+    if (chartCanvas._chart) {
+        chartCanvas._chart.destroy();
+    }
+    
+    console.log("Creating health score chart with score:", healthAnalysis.overallHealthScore);
+    
+    // Create a gauge chart for health score
+    const healthScore = healthAnalysis.overallHealthScore;
+    const confidenceLevel = healthAnalysis.confidenceLevel || 75;
+    
+    // Determine color based on score
+    let scoreColor = '#3AB795'; // Good (green)
+    if (healthScore < 60) {
+        scoreColor = '#EE6352'; // Poor (red)
+    } else if (healthScore < 80) {
+        scoreColor = '#F9C80E'; // Moderate (yellow)
+    }
+    
+    try {
+        chartCanvas._chart = new Chart(chartCanvas, {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [healthScore, 100 - healthScore],
+                    backgroundColor: [scoreColor, '#E9ECEF'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                circumference: Math.PI,
+                rotation: Math.PI,
+                cutoutPercentage: 70,
+                responsive: true,
+                maintainAspectRatio: true,
+                animation: {
+                    animateRotate: true,
+                    animateScale: true
+                },
+                tooltips: {
+                    enabled: true,
+                    callbacks: {
+                        label: function(tooltipItem, data) {
+                            return 'Health Score: ' + healthScore + '/100';
+                        }
+                    }
+                },
+                legend: {
+                    display: false
+                },
+                title: {
+                    display: true,
+                    text: 'Overall Health Score',
+                    position: 'bottom',
+                    fontSize: 16,
+                    padding: 20
+                }
+            },
+            plugins: [{
+                beforeDraw: function(chart) {
+                    const width = chart.chart.width;
+                    const height = chart.chart.height;
+                    const ctx = chart.chart.ctx;
+                    
+                    ctx.restore();
+                    
+                    const fontSize = (height / 10).toFixed(2);
+                    ctx.font = fontSize + 'px Arial';
+                    ctx.textBaseline = 'middle';
+                    ctx.textAlign = 'center';
+                    
+                    // Draw the health score
+                    const text = healthScore;
+                    const textX = width / 2;
+                    const textY = height - (height / 4);
+                    
+                    ctx.fillStyle = scoreColor;
+                    ctx.fillText(text, textX, textY);
+                    
+                    // Draw the label
+                    const labelFontSize = (height / 20).toFixed(2);
+                    ctx.font = labelFontSize + 'px Arial';
+                    ctx.fillStyle = '#666';
+                    ctx.fillText('Confidence: ' + confidenceLevel + '%', textX, textY + parseInt(fontSize) + 5);
+                    
+                    ctx.save();
+                }
+            }]
+        });
+    } catch (error) {
+        console.error("Error creating health score chart:", error);
+    }
+}
+
+/**
+ * Creates a visualization for health insights 
+ * @param {Array} insights - The health insights from the analysis
+ */
+function createInsightsVisualization(insights) {
+    if (!insights || !Array.isArray(insights) || insights.length === 0) {
+        console.warn("Cannot create insights visualization: No insights data");
+        return;
+    }
+    
+    const chartCanvas = document.getElementById('insightsChart');
+    if (!chartCanvas) {
+        console.warn("Insights chart canvas not found");
+        return;
+    }
+    
+    // Clear any existing chart
+    if (chartCanvas._chart) {
+        chartCanvas._chart.destroy();
+    }
+    
+    console.log("Creating insights visualization with insights:", insights);
+    
+    // Sort insights by impact level (highest first)
+    const sortedInsights = [...insights].sort((a, b) => (b.impactLevel || 0) - (a.impactLevel || 0));
+    
+    // Take up to top 5 insights
+    const topInsights = sortedInsights.slice(0, 5);
+    
+    // Prepare data for radar chart
+    const labels = topInsights.map(insight => insight.title);
+    const data = topInsights.map(insight => insight.impactLevel || 1);
+    
+    // Create color scale based on impact
+    const colors = topInsights.map(insight => {
+        const impactLevel = insight.impactLevel || 1;
+        if (impactLevel >= 3) return 'rgba(238, 99, 82, 0.7)'; // High impact (red)
+        if (impactLevel >= 2) return 'rgba(249, 200, 14, 0.7)'; // Moderate impact (yellow)
+        return 'rgba(58, 183, 149, 0.7)'; // Low impact (green)
+    });
+    
+    try {
+        chartCanvas._chart = new Chart(chartCanvas, {
+            type: 'radar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Health Impact',
+                    data: data,
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    pointBackgroundColor: colors,
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: colors,
+                    pointRadius: 5,
+                    pointHoverRadius: 7
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scale: {
+                    ticks: {
+                        beginAtZero: true,
+                        max: 3,
+                        stepSize: 1,
+                        display: false
+                    },
+                    pointLabels: {
+                        fontSize: 14
+                    }
+                },
+                legend: {
+                    display: false
+                },
+                tooltips: {
+                    callbacks: {
+                        label: function(tooltipItem, data) {
+                            const insight = topInsights[tooltipItem.index];
+                            const impactText = insight.impactLevel >= 3 ? 'High Impact' : 
+                                               insight.impactLevel >= 2 ? 'Moderate Impact' : 'Low Impact';
+                            return [insight.title, impactText, insight.description];
+                        }
+                    }
+                },
+                title: {
+                    display: true,
+                    text: 'Key Health Insights',
+                    fontSize: 16,
+                    padding: 20
+                }
+            }
+        });
+    } catch (error) {
+        console.error("Error creating insights visualization:", error);
+    }
+}
+
+/**
+ * Display ML-powered insights from the health analysis
+ * @param {Object} healthAnalysis - The health analysis data
+ */
+function displayMlInsights(healthAnalysis) {
+    console.log("Displaying ML insights from health analysis:", healthAnalysis);
+    
+    if (!healthAnalysis || !healthAnalysis.insights || !Array.isArray(healthAnalysis.insights)) {
+        console.warn("No insights available in health analysis");
+        return;
+    }
+    
+    const insightsContainer = document.getElementById('mlInsights');
+    if (!insightsContainer) {
+        console.warn("ML insights container not found");
+        return;
+    }
+    
+    // Clear any existing content
+    insightsContainer.innerHTML = '';
+    
+    // Add confidence indicator
+    const confidenceSection = document.createElement('div');
+    confidenceSection.className = 'analysis-confidence';
+    confidenceSection.innerHTML = `
+        <div class="confidence-header">
+            <h4>Analysis Confidence</h4>
+            <span class="confidence-score">${healthAnalysis.confidenceLevel}%</span>
+        </div>
+        <div class="confidence-bar-container">
+            <div class="confidence-bar" style="width: ${healthAnalysis.confidenceLevel}%"></div>
+        </div>
+    `;
+    insightsContainer.appendChild(confidenceSection);
+    
+    // Add insights header
+    const insightsHeader = document.createElement('h4');
+    insightsHeader.className = 'insights-header';
+    insightsHeader.textContent = 'Key Health Insights';
+    insightsContainer.appendChild(insightsHeader);
+    
+    // Sort insights by impact level (highest first)
+    const sortedInsights = [...healthAnalysis.insights].sort((a, b) => 
+        (b.impactLevel || 0) - (a.impactLevel || 0)
+    );
+    
+    // Create and add insight cards
+    if (sortedInsights.length > 0) {
+        const insightsList = document.createElement('div');
+        insightsList.className = 'insights-list';
+        
+        sortedInsights.forEach(insight => {
+            // Determine impact level class
+            let impactClass = 'impact-low';
+            if (insight.impactLevel >= 3) {
+                impactClass = 'impact-high'; 
+            } else if (insight.impactLevel >= 2) {
+                impactClass = 'impact-moderate';
+            }
+            
+            // Create insight card
+            const insightCard = document.createElement('div');
+            insightCard.className = `insight-card ${impactClass}`;
+            
+            // Generate parameters display if available
+            let parametersHTML = '';
+            if (insight.parameters) {
+                parametersHTML = '<div class="insight-parameters">';
+                Object.entries(insight.parameters).forEach(([param, value]) => {
+                    parametersHTML += `<span class="insight-parameter">${formatParameterName(param)}: ${value}</span>`;
+                });
+                parametersHTML += '</div>';
+            }
+            
+            insightCard.innerHTML = `
+                <div class="insight-header">
+                    <h5 class="insight-title">${insight.title}</h5>
+                    <span class="impact-badge ${impactClass}">${
+                        insight.impactLevel >= 3 ? 'High Impact' : 
+                        insight.impactLevel >= 2 ? 'Moderate Impact' : 'Low Impact'
+                    }</span>
+                </div>
+                <p class="insight-description">${insight.description}</p>
+                ${parametersHTML}
+            `;
+            
+            insightsList.appendChild(insightCard);
+        });
+        
+        insightsContainer.appendChild(insightsList);
+    } else {
+        // Display message if no insights available
+        const noInsightsMessage = document.createElement('p');
+        noInsightsMessage.className = 'no-data-message';
+        noInsightsMessage.textContent = 'No specific insights available for this analysis.';
+        insightsContainer.appendChild(noInsightsMessage);
+    }
+    
+    // Add recommendation priorities if available
+    if (healthAnalysis.recommendationPriority && healthAnalysis.recommendationPriority.length > 0) {
+        const prioritiesHeader = document.createElement('h4');
+        prioritiesHeader.className = 'priorities-header';
+        prioritiesHeader.textContent = 'Recommendation Priorities';
+        insightsContainer.appendChild(prioritiesHeader);
+        
+        const prioritiesList = document.createElement('ul');
+        prioritiesList.className = 'priorities-list';
+        
+        healthAnalysis.recommendationPriority.forEach(priority => {
+            const priorityItem = document.createElement('li');
+            priorityItem.className = 'priority-item';
+            priorityItem.innerHTML = `<span class="priority-text">${priority}</span>`;
+            prioritiesList.appendChild(priorityItem);
+        });
+        
+        insightsContainer.appendChild(prioritiesList);
     }
 }
