@@ -60,12 +60,18 @@
     <main class="container">
         <section id="uploadSection">
             <div class="upload-container">
-                <div id="uploadArea" class="upload-area">
-                    <i class="fas fa-file-medical fa-3x"></i>
-                    <h3>Upload Blood Report</h3>
-                    <p>Drag & drop your file here or click to browse</p>
-                    <p class="small">Supported formats: JPG, PNG, PDF</p>
-                    <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.pdf" hidden>
+                <div class="upload-area-wrapper">
+                    <div id="uploadArea" class="upload-area">
+                        <i class="fas fa-file-medical fa-3x"></i>
+                        <h3>Upload Blood Report</h3>
+                        <p>Drag & drop your file here or click to browse</p>
+                        <p class="small">Supported formats: JPG, PNG, PDF</p>
+                        <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.pdf" hidden>
+                        <!-- Direct upload button for testing -->
+                        <button id="directUploadBtn" class="direct-upload-btn">Direct Upload</button>
+                    </div>
+                    <!-- File indicator container -->
+                    <div id="file-indicator-container" class="relative-container"></div>
                 </div>
                 
                 <div class="patient-info">
@@ -344,6 +350,70 @@
                 <button id="newAnalysisButton" class="btn-primary">
                     <i class="fas fa-redo"></i> New Analysis
                 </button>
+            </div>
+        </section>
+
+        <!-- Add this inside the results-section, after the abnormal-parameters section -->
+        <section class="ml-insights-section">
+            <div class="ml-insights-header">
+                <h3>AI-Powered Health Insights</h3>
+                <div class="health-score-container">
+                    <div class="health-score-label">Health Score:</div>
+                    <div id="health-score-value">--</div>
+                    <div class="ai-confidence-container">
+                        <div class="ai-confidence-label">AI Analysis Confidence:</div>
+                        <div id="ai-confidence-value">--</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tabs">
+                <div class="tab-headers">
+                    <div class="tab-header active" data-tab="ai-insights-tab">AI Insights</div>
+                    <div class="tab-header" data-tab="clinical-correlations-tab">Parameter Correlations</div>
+                    <div class="tab-header" data-tab="health-predictions-tab">Health Predictions</div>
+                    <div class="tab-header" data-tab="recommendations-tab">Prioritized Recommendations</div>
+                </div>
+                
+                <div class="tab-content">
+                    <div class="tab-panel active" id="ai-insights-tab">
+                        <h4>Key Health Insights</h4>
+                        <p class="insights-description">Our AI algorithms have analyzed patterns in your blood parameters to identify the following health insights:</p>
+                        <div class="insights-grid" id="ai-insights-container">
+                            <!-- Insights will be added here dynamically -->
+                        </div>
+                    </div>
+                    
+                    <div class="tab-panel" id="clinical-correlations-tab">
+                        <h4>Clinical Parameter Correlations</h4>
+                        <p class="correlations-description">The AI has identified meaningful relationships between different parameters in your blood report:</p>
+                        <div id="clinical-correlations-container">
+                            <!-- Correlations will be added here dynamically -->
+                        </div>
+                    </div>
+                    
+                    <div class="tab-panel" id="health-predictions-tab">
+                        <h4>AI-Generated Health Predictions</h4>
+                        <p class="predictions-description">Based on your blood parameters and identified patterns, our machine learning model predicts the following health trajectories:</p>
+                        <div id="health-predictions-container">
+                            <!-- Predictions will be added here dynamically -->
+                        </div>
+                        <div class="prediction-disclaimer">
+                            <p><strong>Note:</strong> These predictions are based on statistical models and should be verified by a healthcare professional. The confidence level indicates the reliability of each prediction based on available data.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-panel" id="recommendations-tab">
+                        <h4>Personalized Health Recommendations</h4>
+                        <p class="recommendations-description">Our AI has prioritized these health recommendations based on your blood analysis results:</p>
+                        <div id="prioritized-recommendations-container">
+                            <!-- Recommendations will be added here dynamically -->
+                        </div>
+                        <div class="recommendation-disclaimer">
+                            <p><strong>Important:</strong> These recommendations are generated by an AI algorithm and should be discussed with your healthcare provider before implementation.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
     </main>

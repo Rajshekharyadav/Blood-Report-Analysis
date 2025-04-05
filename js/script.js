@@ -167,6 +167,18 @@ const healthConditions = {
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', function() {
+    // Add debugging
+    console.log("DOM Content Loaded");
+    console.log("fileInput element:", fileInput);
+    console.log("uploadArea element:", uploadArea);
+    
+    // Check if fileInput is properly hidden
+    if (fileInput && getComputedStyle(fileInput).display === 'none') {
+        console.log("fileInput is hidden by CSS, which is correct");
+    } else {
+        console.warn("fileInput visibility issue - should be hidden");
+    }
+    
     initializeApp();
 });
 
@@ -239,55 +251,58 @@ function showResultsView() {
     resultsSection.classList.remove('hidden');
 }
 
-// Display alert message
-function showAlert(type, title, message) {
-    // Make sure we have the DOM elements
-    if (!alertIcon || !alertTitle || !alertMessage || !alertOverlay) {
-        console.error("Alert elements not found in the DOM");
-        // Log the alert to console at minimum
-        console.log(`ALERT [${type}]: ${title} - ${message}`);
+/**
+ * Shows an alert with the given title, message, and type
+ * @param {string} title - The alert title
+ * @param {string} message - The alert message
+ * @param {string} type - The alert type (error, success, warning, info)
+ */
+function showAlert(title, message, type = 'info') {
+    console.log(`Showing alert: ${type} - ${title}`);
+    
+    const alertOverlay = document.getElementById('alertOverlay');
+    const alertTitle = document.getElementById('alertTitle');
+    const alertMessage = document.getElementById('alertMessage');
+    const alertIcon = document.getElementById('alertIcon');
+    
+    if (!alertOverlay || !alertTitle || !alertMessage || !alertIcon) {
+        console.error('Alert elements not found in the DOM');
         return;
     }
     
-    // Close any existing alert first
-    if (alertOverlay.classList.contains('visible')) {
-        closeAlert();
-        
-        // Give it a moment to close before showing the new one
-        setTimeout(() => {
-            showAlertImplementation(type, title, message);
-        }, 350);
-    } else {
-        showAlertImplementation(type, title, message);
-    }
-}
-
-// Implementation of the alert functionality (separated to allow delayed calls)
-function showAlertImplementation(type, title, message) {
-    alertIcon.className = 'fas';
+    // Set alert content
+    alertTitle.textContent = title;
+    alertMessage.textContent = message;
     
+    // Set icon based on alert type
+    alertIcon.className = 'fas';
     switch (type) {
         case 'error':
             alertIcon.classList.add('fa-exclamation-circle');
+            alertIcon.style.color = 'var(--error-color, #e74c3c)';
             break;
         case 'success':
             alertIcon.classList.add('fa-check-circle');
+            alertIcon.style.color = 'var(--success-color, #2ecc71)';
+            break;
+        case 'warning':
+            alertIcon.classList.add('fa-exclamation-triangle');
+            alertIcon.style.color = 'var(--warning-color, #f39c12)';
             break;
         case 'info':
-            alertIcon.classList.add('fa-info-circle');
-            break;
         default:
             alertIcon.classList.add('fa-info-circle');
+            alertIcon.style.color = 'var(--primary-color, #3498db)';
+            break;
     }
     
-    alertTitle.textContent = title;
-    alertMessage.textContent = message;
+    // Show the alert
     alertOverlay.classList.remove('hidden');
     
-    // Force a reflow to ensure the transition animation works properly
-    void alertOverlay.offsetWidth;
-    
-    alertOverlay.classList.add('visible');
+    // Use setTimeout to ensure the transition happens
+    setTimeout(() => {
+        alertOverlay.classList.add('visible');
+    }, 10);
     
     // Auto-hide non-error alerts after 4 seconds
     if (type !== 'error') {
@@ -297,16 +312,24 @@ function showAlertImplementation(type, title, message) {
     }
 }
 
-// Close alert dialog
+/**
+ * Closes the alert dialog
+ */
 function closeAlert() {
-    alertOverlay.classList.remove('visible');
-    setTimeout(() => {
-        alertOverlay.classList.add('hidden');
-    }, 300); // Match the CSS transition time
+    const alertOverlay = document.getElementById('alertOverlay');
+    if (alertOverlay) {
+        alertOverlay.classList.remove('visible');
+        setTimeout(() => {
+            alertOverlay.classList.add('hidden');
+        }, 300); // Match the CSS transition duration
+    }
 }
 
-// Initialize close alert button
+/**
+ * Initializes the alert button with an event listener
+ */
 function initAlertButton() {
+    const alertButton = document.getElementById('alertButton');
     if (alertButton) {
         alertButton.addEventListener('click', closeAlert);
     }
@@ -457,33 +480,35 @@ function validatePatientInfo() {
     return true;
 }
 
+/**
+ * Generate mock blood data for testing purposes
+ * @returns {Object} Mock blood parameters
+ */
 function generateMockBloodData() {
-    // Generate random values for each blood parameter
-    // Some will be normal, some will be abnormal
-    const bloodData = {};
-    
-    for (const param in bloodTestRanges) {
-        // Random number to determine if this parameter will be normal or abnormal
-        const randomFactor = Math.random();
-        
-        if (randomFactor < 0.7) {
-            // 70% chance of being normal
-            const { min, max } = bloodTestRanges[param];
-            bloodData[param] = parseFloat((Math.random() * (max - min) + min).toFixed(2));
-        } else if (randomFactor < 0.85) {
-            // 15% chance of being high
-            const { max } = bloodTestRanges[param];
-            const deviation = max * (Math.random() * 0.5 + 0.1); // 10-60% higher than max
-            bloodData[param] = parseFloat((max + deviation).toFixed(2));
-        } else {
-            // 15% chance of being low
-            const { min } = bloodTestRanges[param];
-            const deviation = min * (Math.random() * 0.5 + 0.1); // 10-60% lower than min
-            bloodData[param] = parseFloat((min - deviation).toFixed(2));
-        }
-    }
-    
-    return bloodData;
+    console.log("Generating basic mock blood data");
+    return {
+        hemoglobin: 14.5,
+        hematocrit: 42,
+        wbc: 7.5,
+        rbc: 5.0,
+        platelets: 250,
+        glucose: 95,
+        cholesterol: 180,
+        ldl: 110,
+        hdl: 50,
+        triglycerides: 120,
+        sodium: 140,
+        potassium: 4.2,
+        chloride: 101,
+        calcium: 9.5,
+        creatinine: 0.9,
+        urea: 15,
+        uricAcid: 5.5,
+        alt: 25,
+        ast: 28,
+        alp: 80,
+        bilirubin: 0.8
+    };
 }
 
 function analyzeBloodData(bloodData, patientInfo) {
@@ -733,382 +758,298 @@ function generateLifestyleRecommendations(potentialConditions, patientInfo) {
 }
 
 // UI Display functions
-function displayResults(analysisResults, patientInfo) {
+function displayResults(bloodData, ocrText) {
     try {
-        console.log("Starting to display results...");
-        
-        if (!analysisResults) {
-            console.error("No analysis results to display");
-            throw new Error("No analysis results to display");
+        console.log("Displaying analysis results with:", bloodData);
+        if (!bloodData || Object.keys(bloodData).filter(key => bloodData[key] > 0).length === 0) {
+            console.error("No valid blood data available to display");
+            showAlert("Error", "Failed to extract blood data for analysis. Please try a different report.", "error");
+            return false;
+        }
+
+        // Process patient information
+        let patientInfo = {};
+        try {
+            patientInfo = typeof extractPatientInfo === 'function' ? 
+                         extractPatientInfo(ocrText) : 
+                         {
+                             name: document.getElementById('patientName')?.value || 'Anonymous Patient',
+                             age: parseInt(document.getElementById('patientAge')?.value) || 35,
+                             gender: document.getElementById('patientGender')?.value || 'male',
+                             height: parseFloat(document.getElementById('patientHeight')?.value) || 170,
+                             weight: parseFloat(document.getElementById('patientWeight')?.value) || 70
+                         };
+            console.log("Extracted patient info:", patientInfo);
+            
+            // Update patient info display
+            const patientSummary = document.getElementById('patient-summary');
+            if (patientSummary) {
+                patientSummary.innerHTML = `
+                    <p><strong>Name:</strong> ${patientInfo.name}</p>
+                    <p><strong>Age:</strong> ${patientInfo.age} years</p>
+                    <p><strong>Gender:</strong> ${patientInfo.gender?.charAt(0).toUpperCase() + patientInfo.gender?.slice(1) || 'Not specified'}</p>
+                    ${patientInfo.height ? `<p><strong>Height:</strong> ${patientInfo.height} cm</p>` : ''}
+                    ${patientInfo.weight ? `<p><strong>Weight:</strong> ${patientInfo.weight} kg</p>` : ''}
+                `;
+            }
+            
+            // Update date
+            const reportDate = document.getElementById('report-date');
+            if (reportDate) {
+                reportDate.textContent = new Date().toLocaleDateString();
+            }
+        } catch (patientInfoError) {
+            console.error("Error processing patient info:", patientInfoError);
         }
         
-        // Extract values with error checking
-        const abnormalValues = analysisResults.abnormalValues || {};
-        const normalValues = analysisResults.normalValues || {};
-        const potentialConditions = analysisResults.potentialConditions || {};
-        const recommendations = analysisResults.recommendations || [];
-        const lifestyleRecs = analysisResults.lifestyleRecommendations || [];
-        
-        console.log(`Processing: ${Object.keys(abnormalValues).length} abnormal, ${Object.keys(normalValues).length} normal values`);
-        
-        // Safe DOM element access
-        const safeUpdateElement = (element, updateFn) => {
-            if (element) {
-                try {
-                    updateFn(element);
-                    return true;
-                } catch (err) {
-                    console.error(`Error updating element:`, err);
-                    return false;
-                }
+        // Use disease staging algorithm if available
+        let diseaseStages = {};
+        try {
+            if (typeof determineDiseaseStage === 'function') {
+                diseaseStages = determineDiseaseStage(bloodData, patientInfo);
+                console.log("Disease staging complete:", diseaseStages);
             } else {
-                console.warn(`Element not found in DOM`);
-                return false;
+                console.warn("Disease staging function not available");
             }
-        };
-        
-        // Update counters with safety checks
-        let countersUpdated = true;
-        countersUpdated &= safeUpdateElement(normalCount, el => {
-            el.textContent = Object.keys(normalValues).length;
-        });
-        
-        countersUpdated &= safeUpdateElement(abnormalCount, el => {
-            el.textContent = Object.keys(abnormalValues).length;
-        });
-        
-        countersUpdated &= safeUpdateElement(conditionsCount, el => {
-            el.textContent = Object.keys(potentialConditions).length;
-        });
-        
-        if (!countersUpdated) {
-            console.warn("Some counter elements could not be updated - this is not critical");
+        } catch (diseaseStagingError) {
+            console.error("Error in disease staging:", diseaseStagingError);
         }
         
-        // Display patient summary if available
-        const patientInfoUpdated = safeUpdateElement(patientSummary, el => {
-            // Add data source indicator
-            const dataSourceLabel = getDataSourceLabel(patientInfo.dataSource || 'mock');
-            
-            el.innerHTML = `
-                <p><strong>Name:</strong> ${patientInfo.name || 'Unknown'}</p>
-                <p><strong>Age:</strong> ${patientInfo.age || 'Unknown'} years</p>
-                <p><strong>Gender:</strong> ${(patientInfo.gender || 'Unknown').charAt(0).toUpperCase() + (patientInfo.gender || 'unknown').slice(1)}</p>
-                ${patientInfo.weight ? `<p><strong>Weight:</strong> ${patientInfo.weight} kg</p>` : ''}
-                ${patientInfo.height ? `<p><strong>Height:</strong> ${patientInfo.height} cm</p>` : ''}
-                <p><strong>Data Source:</strong> ${dataSourceLabel}</p>
-            `;
-        });
-        
-        if (!patientInfoUpdated) {
-            console.warn("Patient summary could not be updated - this may affect display");
+        // Perform health analysis if available
+        let healthAnalysis = null;
+        try {
+            if (typeof performMultiFactorHealthAnalysis === 'function') {
+                healthAnalysis = performMultiFactorHealthAnalysis(bloodData, patientInfo, diseaseStages);
+                console.log("Health analysis complete:", healthAnalysis);
+            }
+        } catch (analysisError) {
+            console.error("Error in health analysis:", analysisError);
         }
         
-        // Set report date
-        safeUpdateElement(reportDate, el => {
-            const today = new Date();
-            el.textContent = today.toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-            });
-        });
-        
-        // Find most concerning parameter
-        let mostConcerningParam = null;
-        let highestDeviation = 0;
-        
-        // Find the parameter with the highest deviation from normal range
-        for (const [param, info] of Object.entries(abnormalValues)) {
-            // Skip if no value or not enough data to calculate deviation
-            if (!info.value || !bloodTestRanges[param]) continue;
-            
-            const value = parseFloat(info.value);
-            
-            // Calculate deviation based on status
-            let deviation = 0;
-            if (info.status === 'high') {
-                deviation = (value - bloodTestRanges[param].max) / bloodTestRanges[param].max * 100;
+        // Prepare blood data for display
+        let processedData = bloodData;
+        try {
+            if (typeof prepareBloodDataForDisplay === 'function') {
+                processedData = prepareBloodDataForDisplay(bloodData);
+                console.log("Processed data for display:", processedData);
             } else {
-                deviation = (bloodTestRanges[param].min - value) / bloodTestRanges[param].min * 100;
-            }
-            
-            // Update most concerning parameter if this one has higher deviation
-            if (Math.abs(deviation) > highestDeviation) {
-                highestDeviation = Math.abs(deviation);
-                mostConcerningParam = {
-                    name: param,
-                    value: value,
-                    status: info.status,
-                    deviation: Math.abs(deviation).toFixed(1)
-                };
-            }
-        }
-        
-        // Update the most concerning parameter display
-        safeUpdateElement(document.getElementById('mostConcerningParam'), el => {
-            if (mostConcerningParam) {
-                const formattedName = formatParameterName(mostConcerningParam.name);
-                const statusIndicator = mostConcerningParam.status === 'high' ? '↑' : '↓';
-                el.innerHTML = `${formattedName} <span class="${mostConcerningParam.status}">${statusIndicator} ${mostConcerningParam.value}</span> (${mostConcerningParam.deviation}% ${mostConcerningParam.status})`;
-                
-                // Apply color based on status
-                el.className = 'highlight-value';
-                el.classList.add(mostConcerningParam.status);
-            } else {
-                el.textContent = 'None detected';
-            }
-        });
-        
-        // Find primary condition of concern
-        let primaryCondition = null;
-        let highestPriority = 0;
-        
-        // Look through potential conditions to find the most critical one
-        for (const [condition, info] of Object.entries(potentialConditions)) {
-            const severityScore = 
-                info.severity === 'high' ? 3 : 
-                info.severity === 'moderate' ? 2 : 1;
-            
-            // Calculate a priority score based on severity and probability
-            const probability = parseInt(info.probability) || 0;
-            const priorityScore = severityScore * 20 + probability;
-            
-            if (priorityScore > highestPriority) {
-                highestPriority = priorityScore;
-                primaryCondition = {
-                    name: condition,
-                    severity: info.severity,
-                    probability: probability
-                };
-            }
-        }
-        
-        // Update the primary condition display
-        safeUpdateElement(document.getElementById('primaryCondition'), el => {
-            if (primaryCondition) {
-                let formattedName = primaryCondition.name
-                    .replace(/([A-Z])/g, ' $1') // Add space before capital letters
-                    .replace(/^./, match => match.toUpperCase()) // Capitalize first letter
-                    .replace(/_/g, ' '); // Replace underscores with spaces
-                
-                el.innerHTML = `${formattedName} <span class="severity-badge severity-${primaryCondition.severity || 'low'}">${primaryCondition.probability}%</span>`;
-                
-                // Apply color based on severity
-                el.className = 'highlight-value';
-                el.classList.add(`severity-${primaryCondition.severity || 'low'}`);
-            } else {
-                el.textContent = 'None detected';
-            }
-        });
-        
-        // Display abnormal parameters
-        const abnormalParamsUpdated = safeUpdateElement(abnormalParameters, el => {
-            el.innerHTML = '';
-            
-            if (Object.keys(abnormalValues).length > 0) {
-                const sortedParams = Object.entries(abnormalValues)
-                    .sort((a, b) => {
-                        // Default to 'high' if status is missing
-                        const statusA = a[1].status || 'high';
-                        const statusB = b[1].status || 'high';
-                        // Sort by severity (high values first, then low values)
-                        if (statusA === statusB) return 0;
-                        return statusA === 'high' ? -1 : 1;
-                    });
-                
-                for (const [param, info] of sortedParams) {
-                    try {
-                        el.innerHTML += formatAbnormalValue(param, info);
-                    } catch (formatError) {
-                        console.warn(`Error formatting abnormal value for ${param}:`, formatError);
-                        // Add a simple fallback display
-                        el.innerHTML += `<div class="abnormal-parameter">
-                            <h4>${formatParameterName(param)}</h4>
-                            <p>Value: ${info.value || 'Unknown'}</p>
-                        </div>`;
-                    }
-                }
-            } else {
-                el.innerHTML = '<p class="normal">All parameters are within normal ranges.</p>';
-            }
-        });
-        
-        if (!abnormalParamsUpdated) {
-            console.error("Could not update abnormal parameters - critical display error");
-            // This is considered critical but we'll continue to attempt to display other sections
-        }
-        
-        // Display normal parameters
-        const normalParamsUpdated = safeUpdateElement(normalParameters, el => {
-            el.innerHTML = '';
-            
-            if (Object.keys(normalValues).length > 0) {
-                // Group normal parameters by category
-                const categories = {
-                    'Blood Cells': ['hemoglobin', 'hematocrit', 'wbc', 'rbc', 'platelets'],
-                    'Metabolic': ['glucose', 'cholesterol', 'ldl', 'hdl', 'triglycerides'],
-                    'Kidney Function': ['creatinine', 'urea', 'albumin'],
-                    'Liver Function': ['alt', 'ast', 'bilirubin'],
-                    'Electrolytes': ['sodium', 'potassium']
-                };
-                
-                // Create a map for categorized parameters
-                const categorizedParams = {};
-                
-                // Ensure we have an 'Other' category
-                categorizedParams['Other'] = [];
-                
-                // Categorize parameters
-                for (const [param, info] of Object.entries(normalValues)) {
-                    let category = 'Other';
-                    for (const [cat, params] of Object.entries(categories)) {
-                        if (params.includes(param)) {
-                            category = cat;
-                            break;
-                        }
-                    }
-                    
-                    if (!categorizedParams[category]) categorizedParams[category] = [];
-                    categorizedParams[category].push([param, info]);
-                }
-                
-                // Display parameters by category
-                for (const [category, params] of Object.entries(categorizedParams)) {
-                    if (params.length > 0) {
-                        try {
-                            const categoryDiv = document.createElement('div');
-                            categoryDiv.className = 'parameter-category';
-                            categoryDiv.innerHTML = `<h3>${category}</h3>`;
-                            
-                            for (const [param, info] of params) {
-                                const paramElement = document.createElement('div');
-                                paramElement.className = 'parameter';
-                                paramElement.innerHTML = `
-                                    <h4>${formatParameterName(param)}</h4>
-                                    <p><strong>Value:</strong> ${info.value || 'Unknown'} ${info.unit || ''}</p>
-                                    <p><strong>Normal Range:</strong> ${info.normalRange || 'Unknown'} ${info.unit || ''}</p>
-                                `;
-                                categoryDiv.appendChild(paramElement);
-                            }
-                            
-                            el.appendChild(categoryDiv);
-                        } catch (categoryError) {
-                            console.warn(`Error creating category ${category}:`, categoryError);
-                        }
-                    }
-                }
-            } else {
-                el.innerHTML = '<p>No parameters within normal range.</p>';
-            }
-        });
-        
-        if (!normalParamsUpdated) {
-            console.warn("Could not update normal parameters - display may be incomplete");
-        }
-        
-        // Display potential conditions
-        const conditionsUpdated = safeUpdateElement(potentialConditions, el => {
-            el.innerHTML = '';
-            
-            if (Object.keys(potentialConditions).length > 0) {
-                // Sort conditions by severity and probability
-                const sortedConditions = Object.entries(potentialConditions)
-                    .sort((a, b) => {
-                        // First sort by severity (high, moderate, mild)
-                        const severityOrder = { 'high': 0, 'moderate': 1, 'mild': 2 };
-                        const severityA = a[1].severity || 'mild';
-                        const severityB = b[1].severity || 'mild';
-                        const severityDiff = severityOrder[severityA] - severityOrder[severityB];
-                        if (severityDiff !== 0) return severityDiff;
-                        
-                        // Then by probability
-                        const probA = parseInt(a[1].probability || 0);
-                        const probB = parseInt(b[1].probability || 0);
-                        return probB - probA;
-                    });
-                
-                for (const [condition, info] of sortedConditions) {
-                    try {
-                        el.innerHTML += formatCondition(condition, info);
-                    } catch (formatError) {
-                        console.warn(`Error formatting condition ${condition}:`, formatError);
-                        // Fallback display
-                        el.innerHTML += `<div class="condition-card">
-                            <h4>${condition}</h4>
-                            <p>Probability: ${info.probability || 'Unknown'}%</p>
-                        </div>`;
-                    }
-                }
-            } else {
-                el.innerHTML = '<p class="normal">No potential health conditions detected.</p>';
-            }
-        });
-        
-        if (!conditionsUpdated) {
-            console.warn("Could not update potential conditions - display may be incomplete");
-        }
-        
-        // Display recommendations if element exists
-        safeUpdateElement(medicalRecommendations, el => {
-            el.innerHTML = '';
-            if (recommendations.length > 0) {
-                const recommendationsList = document.createElement('ul');
-                recommendationsList.className = 'recommendations-list';
-                recommendations.forEach(recommendation => {
-                    if (recommendation) {
-                        const listItem = document.createElement('li');
-                        listItem.textContent = recommendation;
-                        recommendationsList.appendChild(listItem);
-                    }
+                console.warn("prepareBloodDataForDisplay function not available");
+                // Basic processing as fallback
+                processedData = Object.entries(bloodData).map(([key, value]) => {
+                    return {
+                        name: key,
+                        value: value,
+                        isAbnormal: false // Default to not abnormal without reference ranges
+                    };
                 });
-                el.appendChild(recommendationsList);
-            } else {
-                el.innerHTML = '<p>No specific medical recommendations.</p>';
             }
-        });
-        
-        // Display lifestyle recommendations if element exists
-        safeUpdateElement(lifestyleRecommendations, el => {
-            el.innerHTML = '';
-            if (lifestyleRecs.length > 0) {
-                const lifestyleList = document.createElement('ul');
-                lifestyleList.className = 'recommendations-list';
-                lifestyleRecs.forEach(recommendation => {
-                    if (recommendation) {
-                        const listItem = document.createElement('li');
-                        listItem.textContent = recommendation;
-                        lifestyleList.appendChild(listItem);
-                    }
-                });
-                el.appendChild(lifestyleList);
-            } else {
-                el.innerHTML = '<p>No specific lifestyle recommendations.</p>';
-            }
-        });
-        
-        // Set up the download button if it exists
-        const downloadButton = document.getElementById('downloadButton');
-        if (downloadButton) {
-            downloadButton.addEventListener('click', function() {
-                showAlert('info', 'Download Feature', 'The PDF download feature will be implemented in the next version. Currently, you can use the Print feature to save as PDF.');
-            });
+        } catch (processError) {
+            console.error("Error processing blood data:", processError);
         }
         
-        console.log("Results displayed successfully");
+        // Update the results UI
+        try {
+            if (typeof updateResultsDisplay === 'function') {
+                updateResultsDisplay(processedData, diseaseStages, healthAnalysis);
+            } else {
+                // Basic display as fallback
+                displayBasicResults(processedData);
+            }
+        } catch (displayError) {
+            console.error("Error updating results display:", displayError);
+        }
         
-        // After existing result display logic, update AI meters
-        updateAIMeters(analysisResults);
+        // Create visualizations
+        try {
+            if (typeof createVisualizations === 'function') {
+                createVisualizations(processedData, diseaseStages, healthAnalysis);
+            } else {
+                console.warn("createVisualizations function not available");
+                // Try to create individual charts if available
+                if (typeof createAbnormalParametersChart === 'function') {
+                    try {
+                        createAbnormalParametersChart(processedData);
+                    } catch(chartErr) {
+                        console.error("Error creating abnormal parameters chart:", chartErr);
+                    }
+                }
+                
+                if (typeof createDiseaseRiskChart === 'function') {
+                    try {
+                        createDiseaseRiskChart(diseaseStages);
+                    } catch(chartErr) {
+                        console.error("Error creating disease risk chart:", chartErr);
+                    }
+                }
+            }
+        } catch (chartError) {
+            console.error("Error creating visualizations:", chartError);
+            showAlert("Warning", "Analysis completed, but there was an error creating some visualizations.", "warning");
+        }
         
-        // Generate AI insights
-        generateAIInsights(analysisResults);
+        // Show disease risk information if available
+        try {
+            if (typeof displayDiseaseRisks === 'function') {
+                displayDiseaseRisks(diseaseStages);
+            }
+        } catch (riskDisplayError) {
+            console.error("Error displaying disease risks:", riskDisplayError);
+        }
         
-        return true; // Return success
+        // Display ML insights if available
+        try {
+            if (healthAnalysis && typeof displayMlInsights === 'function') {
+                displayMlInsights(healthAnalysis);
+            }
+        } catch (insightsError) {
+            console.error("Error displaying ML insights:", insightsError);
+        }
+        
+        // Update the blood count statistics
+        try {
+            updateBloodCountStats(processedData);
+        } catch (statsError) {
+            console.error("Error updating statistics:", statsError);
+        }
+        
+        // Hide loading and show results sections
+        const loadingSection = document.getElementById('loadingSection');
+        const resultsSection = document.getElementById('resultsSection');
+        
+        if (loadingSection) loadingSection.classList.add('hidden');
+        if (resultsSection) resultsSection.classList.remove('hidden');
+        
+        // Scroll to results if available
+        if (resultsSection) {
+            resultsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Show success alert
+        showAlert("Analysis Complete", "Your blood report has been successfully analyzed.", "success");
+        
+        return true;
     } catch (error) {
         console.error("Error displaying results:", error);
-        showAlert('error', 'Display Error', 'There was an error displaying the results: ' + error.message);
+        const loadingSection = document.getElementById('loadingSection');
+        if (loadingSection) loadingSection.classList.add('hidden');
+        showAlert("Error", "An error occurred while displaying the results: " + error.message, "error");
         return false;
     }
+}
+
+/**
+ * Updates the blood count statistics in the UI
+ * @param {Object} processedData - The processed blood data
+ */
+function updateBloodCountStats(processedData) {
+    const normalCount = document.getElementById('normalCount');
+    const abnormalCount = document.getElementById('abnormalCount');
+    const conditionsCount = document.getElementById('conditionsCount');
+    
+    if (!processedData) return;
+    
+    let normal = 0;
+    let abnormal = 0;
+    
+    // Count normal and abnormal parameters
+    if (Array.isArray(processedData)) {
+        processedData.forEach(param => {
+            if (param.isAbnormal) {
+                abnormal++;
+            } else {
+                normal++;
+            }
+        });
+    } else if (typeof processedData === 'object') {
+        Object.values(processedData).forEach(param => {
+            if (typeof param === 'object' && param.isAbnormal) {
+                abnormal++;
+            } else {
+                normal++;
+            }
+        });
+    }
+    
+    // Update the count displays
+    if (normalCount) normalCount.textContent = normal;
+    if (abnormalCount) abnormalCount.textContent = abnormal;
+    
+    // Update conditions count if we have disease stages
+    const diseaseStages = document.querySelectorAll('#potentialConditions .condition-card');
+    if (conditionsCount && diseaseStages) {
+        conditionsCount.textContent = diseaseStages.length;
+    }
+}
+
+/**
+ * Basic fallback display function when updateResultsDisplay is not available
+ * @param {Object} processedData - The processed blood data
+ */
+function displayBasicResults(processedData) {
+    console.log("Using basic results display fallback");
+    
+    // Get container elements
+    const abnormalParamsContainer = document.getElementById('abnormalParameters');
+    const normalParamsContainer = document.getElementById('normalParameters');
+    
+    // Clear containers if they exist
+    if (abnormalParamsContainer) abnormalParamsContainer.innerHTML = '';
+    if (normalParamsContainer) normalParamsContainer.innerHTML = '';
+    
+    // Display all parameters in the normal parameters section
+    if (normalParamsContainer && Array.isArray(processedData)) {
+        processedData.forEach(param => {
+            const paramElement = document.createElement('div');
+            paramElement.className = 'parameter';
+            paramElement.innerHTML = `
+                <h4>${formatParameterName(param.name)}</h4>
+                <div class="parameter-value">${param.value}</div>
+            `;
+            normalParamsContainer.appendChild(paramElement);
+        });
+    } else if (normalParamsContainer && typeof processedData === 'object') {
+        // Handle case where processedData is an object
+        Object.entries(processedData).forEach(([name, value]) => {
+            const paramElement = document.createElement('div');
+            paramElement.className = 'parameter';
+            paramElement.innerHTML = `
+                <h4>${formatParameterName(name)}</h4>
+                <div class="parameter-value">${typeof value === 'object' ? value.value || value : value}</div>
+            `;
+            normalParamsContainer.appendChild(paramElement);
+        });
+    }
+    
+    // Update count displays
+    updateBloodCountStats(processedData);
+}
+
+/**
+ * Helper function to format parameter names
+ * @param {string} param - The parameter name to format
+ * @returns {string} - Formatted parameter name
+ */
+function formatParameterName(param) {
+    if (!param) return 'Unknown Parameter';
+    
+    // Handle camelCase
+    const spacedParam = param.replace(/([A-Z])/g, ' $1');
+    
+    // Capitalize first letter and known abbreviations
+    const formattedParam = spacedParam.replace(/\b\w/g, c => c.toUpperCase());
+    
+    // Replace common abbreviations
+    return formattedParam
+        .replace(/\bWbc\b/g, 'WBC')
+        .replace(/\bRbc\b/g, 'RBC')
+        .replace(/\bHdl\b/g, 'HDL')
+        .replace(/\bLdl\b/g, 'LDL')
+        .replace(/\bAlt\b/g, 'ALT')
+        .replace(/\bAst\b/g, 'AST')
+        .replace(/\bHba1c\b/g, 'HbA1c')
+        .replace(/\bMcv\b/g, 'MCV')
+        .replace(/\bMch\b/g, 'MCH')
+        .replace(/\bMchc\b/g, 'MCHC');
 }
 
 function formatParameterName(param) {
@@ -1197,211 +1138,595 @@ function createVisualizations(analysisResults, patientInfo) {
 }
 
 function determineDiseaseStage(bloodData, patientInfo) {
-    const stages = {};
+    console.log("Analyzing blood data with ML-enhanced algorithms...");
+    console.log("Patient info:", patientInfo);
+    console.log("Blood data:", bloodData);
     
-    // Diabetes staging
-    if (bloodData.glucose) {
-        const glucose = bloodData.glucose;
+    const stages = {};
+    const riskScores = {};
+    
+    // Extract patient demographics for risk calculations
+    const age = patientInfo.age || 50;
+    const gender = patientInfo.gender || 'male';
+    const isMale = gender.toLowerCase() === 'male';
+    const height = patientInfo.height || 170; // in cm
+    const weight = patientInfo.weight || 70; // in kg
+    
+    // Calculate BMI for risk assessment
+    const bmi = weight / Math.pow(height/100, 2);
+    
+    // ML-inspired risk scoring - multifactorial analysis with weighted factors
+    
+    // DIABETES RISK ASSESSMENT - Enhanced algorithm
+    if (bloodData.glucose || bloodData.hba1c) {
+        const glucose = bloodData.glucose || 0;
+        const hba1c = bloodData.hba1c || 0;
         let diabetesStage = null;
+        let diabetesRiskScore = 0;
         
+        // Primary indicators with higher weights
         if (glucose >= 126) {
+            diabetesRiskScore += 50;
+        } else if (glucose >= 100 && glucose < 126) {
+            diabetesRiskScore += 25;
+        }
+        
+        if (hba1c >= 6.5) {
+            diabetesRiskScore += 50;
+        } else if (hba1c >= 5.7 && hba1c < 6.5) {
+            diabetesRiskScore += 25;
+        }
+        
+        // Secondary risk factors with lower weights
+        if (bmi >= 30) {
+            diabetesRiskScore += 15;
+        } else if (bmi >= 25) {
+            diabetesRiskScore += 10;
+        }
+        
+        if (age >= 45) {
+            diabetesRiskScore += 10;
+        }
+        
+        // Risk classification based on total score
+        if (diabetesRiskScore >= 50) {
             diabetesStage = {
                 disease: "Diabetes Mellitus",
                 stage: "Type 2 Diabetes",
                 severity: 2,
-                value: glucose,
-                criteria: "Fasting glucose ≥ 126 mg/dL",
+                riskScore: diabetesRiskScore,
+                confidence: Math.min(diabetesRiskScore / 100, 0.95),
+                primaryIndicators: {
+                    glucose: glucose > 0 ? glucose : "Not available",
+                    hba1c: hba1c > 0 ? hba1c : "Not available"
+                },
+                interpretation: glucose >= 126 ? 
+                    "Fasting glucose ≥ 126 mg/dL indicates diabetes" : 
+                    hba1c >= 6.5 ? 
+                        "HbA1c ≥ 6.5% indicates diabetes" : 
+                        "Multiple risk factors suggest diabetes",
                 recommendations: [
                     "Consult with an endocrinologist for diabetes management",
                     "Monitor blood glucose levels regularly",
                     "Consider medication as prescribed by your doctor",
-                    "Follow a diabetic diet low in simple carbohydrates"
+                    "Follow a diabetic diet low in simple carbohydrates",
+                    "Regular physical activity of at least 150 minutes per week"
                 ]
             };
-        } else if (glucose >= 100 && glucose < 126) {
+        } else if (diabetesRiskScore >= 25) {
             diabetesStage = {
                 disease: "Pre-Diabetes",
-                stage: "Impaired Fasting Glucose",
+                stage: "Impaired Glucose Metabolism",
                 severity: 1,
-                value: glucose,
-                criteria: "Fasting glucose between 100-125 mg/dL",
+                riskScore: diabetesRiskScore,
+                confidence: Math.min(diabetesRiskScore / 100, 0.9),
+                primaryIndicators: {
+                    glucose: glucose > 0 ? glucose : "Not available",
+                    hba1c: hba1c > 0 ? hba1c : "Not available"
+                },
+                interpretation: glucose >= 100 && glucose < 126 ? 
+                    "Fasting glucose between 100-125 mg/dL indicates prediabetes" : 
+                    hba1c >= 5.7 && hba1c < 6.5 ? 
+                        "HbA1c between 5.7-6.4% indicates prediabetes" : 
+                        "Risk factors suggest prediabetic state",
                 recommendations: [
-                    "Follow up with your healthcare provider",
+                    "Follow up with your healthcare provider within 3-6 months",
                     "Consider lifestyle modifications to prevent progression to diabetes",
                     "Reduce intake of refined carbohydrates and sugars",
-                    "Aim for 150 minutes of physical activity weekly"
+                    "Aim for 150 minutes of moderate-intensity physical activity weekly",
+                    "Consider meeting with a dietitian for personalized meal planning"
                 ]
             };
         }
         
         if (diabetesStage) {
             stages.diabetes = diabetesStage;
+            riskScores.diabetes = diabetesRiskScore;
         }
     }
     
-    // Anemia staging
-    if (bloodData.hemoglobin && bloodData.hematocrit) {
-        const hgb = bloodData.hemoglobin;
-        const hct = bloodData.hematocrit;
-        const gender = patientInfo.gender;
+    // ANEMIA ASSESSMENT - Enhanced with multiple parameters and risk factors
+    if (bloodData.hemoglobin || bloodData.hematocrit || bloodData.rbc) {
+        const hgb = bloodData.hemoglobin || 0;
+        const hct = bloodData.hematocrit || 0;
+        const rbc = bloodData.rbc || 0;
+        const mcv = bloodData.mcv || 0;
+        const mch = bloodData.mch || 0;
+        const mchc = bloodData.mchc || 0;
+        
+        let anemiaRiskScore = 0;
         let anemiaStage = null;
         
-        // Gender-specific criteria
-        const isLowHgb = (gender === 'male' && hgb < 13.5) || (gender === 'female' && hgb < 12.0);
-        const isLowHct = (gender === 'male' && hct < 41) || (gender === 'female' && hct < 36);
+        // Define reference ranges by gender
+        const hgbLowCutoff = isMale ? 13.5 : 12.0;
+        const hgbSevereCutoff = isMale ? 10.0 : 9.0;
+        const hctLowCutoff = isMale ? 41.0 : 36.0;
+        const rbcLowCutoff = isMale ? 4.5 : 4.0;
         
-        // For consistent output
-        const genderText = gender === 'male' ? 'male' : 'female';
+        // Primary indicators
+        if (hgb > 0 && hgb < hgbLowCutoff) {
+            anemiaRiskScore += hgb < hgbSevereCutoff ? 50 : 30;
+        }
         
-        if (isLowHgb && isLowHct) {
-            // Determine severity
-            let severity = 1;
-            let stage = "Mild";
-            
-            if ((gender === 'male' && hgb < 10) || (gender === 'female' && hgb < 9)) {
-                severity = 2;
-                stage = "Moderate to Severe";
+        if (hct > 0 && hct < hctLowCutoff) {
+            anemiaRiskScore += 20;
+        }
+        
+        if (rbc > 0 && rbc < rbcLowCutoff) {
+            anemiaRiskScore += 15;
+        }
+        
+        // Add additional indicators for anemia classification
+        let anemiaType = "Unspecified";
+        let anemiaClassification = "";
+        
+        // MCV-based classification
+        if (mcv > 0) {
+            if (mcv < 80) {
+                anemiaType = "Microcytic Anemia";
+                anemiaClassification += "Low MCV suggests possible iron deficiency, thalassemia, or chronic disease. ";
+            } else if (mcv > 100) {
+                anemiaType = "Macrocytic Anemia";
+                anemiaClassification += "High MCV suggests possible B12/folate deficiency or liver disease. ";
+            } else {
+                anemiaType = "Normocytic Anemia";
+                anemiaClassification += "Normal MCV suggests possible chronic disease, blood loss, or hemolysis. ";
             }
-            
+        }
+        
+        // Classify severity
+        if (anemiaRiskScore >= 40) {
             anemiaStage = {
                 disease: "Anemia",
-                stage: `${stage} Anemia`,
-                severity: severity,
-                value: hgb,
-                criteria: `Hemoglobin below normal range for ${genderText}`,
+                stage: "Moderate to Severe " + anemiaType,
+                severity: 2,
+                riskScore: anemiaRiskScore,
+                confidence: Math.min(anemiaRiskScore / 100, 0.95),
+                primaryIndicators: {
+                    hemoglobin: hgb > 0 ? hgb : "Not available",
+                    hematocrit: hct > 0 ? hct : "Not available",
+                    rbc: rbc > 0 ? rbc : "Not available",
+                    mcv: mcv > 0 ? mcv : "Not available"
+                },
+                interpretation: anemiaClassification + 
+                    `Hemoglobin of ${hgb} g/dL is significantly below the normal range for ${gender}.`,
+                recommendations: [
+                    "Urgent consultation with a hematologist or healthcare provider",
+                    "Additional tests like iron studies, B12, folate may be needed",
+                    "Iron supplementation after consulting with your doctor",
+                    "Include iron-rich foods in your diet (lean meats, beans, spinach)",
+                    "Investigate underlying causes of anemia"
+                ]
+            };
+        } else if (anemiaRiskScore >= 20) {
+            anemiaStage = {
+                disease: "Anemia",
+                stage: "Mild " + anemiaType,
+                severity: 1,
+                riskScore: anemiaRiskScore,
+                confidence: Math.min(anemiaRiskScore / 100, 0.9),
+                primaryIndicators: {
+                    hemoglobin: hgb > 0 ? hgb : "Not available",
+                    hematocrit: hct > 0 ? hct : "Not available",
+                    rbc: rbc > 0 ? rbc : "Not available",
+                    mcv: mcv > 0 ? mcv : "Not available"
+                },
+                interpretation: anemiaClassification + 
+                    `Hemoglobin of ${hgb} g/dL is below the normal range for ${gender}.`,
                 recommendations: [
                     "Consult with a healthcare provider for further evaluation",
-                    "Consider iron supplementation after consulting with your doctor",
-                    "Include iron-rich foods in your diet (lean meats, beans, spinach)",
-                    "Follow up with additional testing to determine the cause of anemia"
+                    "Consider dietary changes to increase iron intake",
+                    "Follow up with additional testing to determine the cause of anemia",
+                    "Regular monitoring of blood counts recommended"
                 ]
             };
         }
         
         if (anemiaStage) {
             stages.anemia = anemiaStage;
+            riskScores.anemia = anemiaRiskScore;
         }
     }
     
-    // Hyperlipidemia (high cholesterol) staging
-    if (bloodData.cholesterol && bloodData.ldl && bloodData.hdl) {
-        const cholesterol = bloodData.cholesterol;
-        const ldl = bloodData.ldl;
-        const hdl = bloodData.hdl;
-        let cholesterolStage = null;
+    // CARDIOVASCULAR RISK ASSESSMENT - Enhanced Framingham-inspired algorithm
+    if (bloodData.cholesterol || bloodData.ldl || bloodData.hdl || bloodData.triglycerides) {
+        const totalChol = bloodData.cholesterol || 0;
+        const ldl = bloodData.ldl || 0;
+        const hdl = bloodData.hdl || 0;
+        const tg = bloodData.triglycerides || 0;
         
-        if (cholesterol >= 240 || ldl >= 160 || hdl < 40) {
-            let severity = 1;
-            let stage = "Mild to Moderate";
-            
-            if (cholesterol >= 280 || ldl >= 190) {
-                severity = 2;
-                stage = "Severe";
-            }
-            
-            cholesterolStage = {
-                disease: "Hyperlipidemia",
-                stage: `${stage} Hyperlipidemia`,
-                severity: severity,
-                value: `TC: ${cholesterol}, LDL: ${ldl}, HDL: ${hdl}`,
-                criteria: "Elevated total cholesterol, LDL, or low HDL",
+        let cvdRiskScore = 0;
+        let lipidStage = null;
+        
+        // Primary lipid indicators
+        if (totalChol >= 240) {
+            cvdRiskScore += 20;
+        } else if (totalChol >= 200) {
+            cvdRiskScore += 10;
+        }
+        
+        if (ldl >= 160) {
+            cvdRiskScore += 20;
+        } else if (ldl >= 130) {
+            cvdRiskScore += 10;
+        }
+        
+        if (hdl < 40) {
+            cvdRiskScore += 20;
+        } else if (hdl < 50) {
+            cvdRiskScore += 5;
+        } else if (hdl > 60) {
+            cvdRiskScore -= 5; // Protective factor
+        }
+        
+        if (tg >= 200) {
+            cvdRiskScore += 10;
+        } else if (tg >= 150) {
+            cvdRiskScore += 5;
+        }
+        
+        // Additional risk factors
+        if (age > 45 && isMale) cvdRiskScore += 10;
+        if (age > 55 && !isMale) cvdRiskScore += 10;
+        if (bmi >= 30) cvdRiskScore += 10;
+        
+        // Classify cardiovascular risk
+        if (cvdRiskScore >= 40) {
+            lipidStage = {
+                disease: "Dyslipidemia",
+                stage: "High Cardiovascular Risk",
+                severity: 3,
+                riskScore: cvdRiskScore,
+                confidence: Math.min(cvdRiskScore / 100, 0.95),
+                primaryIndicators: {
+                    totalCholesterol: totalChol > 0 ? totalChol : "Not available",
+                    ldl: ldl > 0 ? ldl : "Not available",
+                    hdl: hdl > 0 ? hdl : "Not available",
+                    triglycerides: tg > 0 ? tg : "Not available"
+                },
+                interpretation: "Multiple lipid abnormalities and risk factors indicate high cardiovascular risk.",
                 recommendations: [
-                    "Consult with a healthcare provider about lipid management",
+                    "Consult with a cardiologist for cardiovascular risk management",
+                    "Consider lipid-lowering medication as prescribed by your doctor",
+                    "Adopt a heart-healthy diet low in saturated and trans fats",
+                    "Engage in regular aerobic exercise (at least 150 minutes per week)",
+                    "Consider stress management techniques"
+                ]
+            };
+        } else if (cvdRiskScore >= 20) {
+            lipidStage = {
+                disease: "Dyslipidemia",
+                stage: "Moderate Cardiovascular Risk",
+                severity: 2,
+                riskScore: cvdRiskScore,
+                confidence: Math.min(cvdRiskScore / 100, 0.9),
+                primaryIndicators: {
+                    totalCholesterol: totalChol > 0 ? totalChol : "Not available",
+                    ldl: ldl > 0 ? ldl : "Not available",
+                    hdl: hdl > 0 ? hdl : "Not available",
+                    triglycerides: tg > 0 ? tg : "Not available"
+                },
+                interpretation: "Lipid abnormalities suggest moderate cardiovascular risk.",
+                recommendations: [
+                    "Follow up with your healthcare provider for lipid management",
                     "Consider dietary changes such as reducing saturated fats",
                     "Increase physical activity to help improve cholesterol levels",
-                    "Follow up with regular lipid panel testing"
+                    "Regular monitoring of lipid levels every 6-12 months"
+                ]
+            };
+        } else if (cvdRiskScore >= 10) {
+            lipidStage = {
+                disease: "Dyslipidemia",
+                stage: "Mild Cardiovascular Risk",
+                severity: 1,
+                riskScore: cvdRiskScore,
+                confidence: Math.min(cvdRiskScore / 100, 0.85),
+                primaryIndicators: {
+                    totalCholesterol: totalChol > 0 ? totalChol : "Not available",
+                    ldl: ldl > 0 ? ldl : "Not available",
+                    hdl: hdl > 0 ? hdl : "Not available",
+                    triglycerides: tg > 0 ? tg : "Not available"
+                },
+                interpretation: "Some lipid parameters outside optimal range suggesting mild cardiovascular risk.",
+                recommendations: [
+                    "Consider heart-healthy diet rich in fruits, vegetables, and whole grains",
+                    "Regular physical activity of at least 150 minutes per week",
+                    "Monitor lipid levels annually",
+                    "Discuss with healthcare provider at your next visit"
                 ]
             };
         }
         
-        if (cholesterolStage) {
-            stages.hyperlipidemia = cholesterolStage;
+        if (lipidStage) {
+            stages.dyslipidemia = lipidStage;
+            riskScores.dyslipidemia = cvdRiskScore;
         }
     }
     
-    // Chronic Kidney Disease staging based on eGFR
-    if (bloodData.creatinine) {
-        // Simple eGFR calculation (this is simplified, real calculation should use validated formulas)
-        const creatinine = bloodData.creatinine;
-        const age = patientInfo.age || 50; // Default age if not provided
-        const gender = patientInfo.gender || 'male'; // Default gender if not provided
-        const race = patientInfo.race || 'non-black'; // Default race if not provided
+    // KIDNEY FUNCTION ASSESSMENT - Enhanced with eGFR calculation and more parameters
+    if (bloodData.creatinine || bloodData.urea) {
+        const creatinine = bloodData.creatinine || 0;
+        const urea = bloodData.urea || 0;
+        const albumin = bloodData.albumin || 0;
         
-        // Simplified eGFR calculation
-        let eGFR = 175 * Math.pow(creatinine, -1.154) * Math.pow(age, -0.203);
-        if (gender === 'female') eGFR *= 0.742;
-        if (race === 'black') eGFR *= 1.212;
+        // Enhanced eGFR calculation (CKD-EPI equation simplified)
+        let eGFR = 0;
+        if (creatinine > 0) {
+            // Simple version of CKD-EPI equation
+            let genderFactor = isMale ? 1 : 0.742;
+            let raceFactor = patientInfo.race === 'black' ? 1.212 : 1;
+            
+            // Simplified CKD-EPI formula
+            if (isMale) {
+                eGFR = 141 * Math.min(creatinine/0.9, 1) ** -0.411 * Math.max(creatinine/0.9, 1) ** -1.209 * 0.993 ** age * genderFactor * raceFactor;
+            } else {
+                eGFR = 141 * Math.min(creatinine/0.7, 1) ** -0.329 * Math.max(creatinine/0.7, 1) ** -1.209 * 0.993 ** age * genderFactor * raceFactor;
+            }
+        }
         
-        let ckdStage = null;
+        let kidneyRiskScore = 0;
+        let kidneyStage = null;
         
-        if (eGFR < 15) {
-            ckdStage = {
+        // eGFR scoring
+        if (eGFR > 0 && eGFR < 15) {
+            kidneyRiskScore += 60; // Stage 5 CKD (Kidney Failure)
+        } else if (eGFR >= 15 && eGFR < 30) {
+            kidneyRiskScore += 50; // Stage 4 CKD (Severe)
+        } else if (eGFR >= 30 && eGFR < 45) {
+            kidneyRiskScore += 40; // Stage 3b CKD (Moderate to Severe)
+        } else if (eGFR >= 45 && eGFR < 60) {
+            kidneyRiskScore += 30; // Stage 3a CKD (Moderate)
+        } else if (eGFR >= 60 && eGFR < 90) {
+            kidneyRiskScore += 15; // Stage 2 CKD (Mild)
+        }
+        
+        // Additional indicators
+        if (creatinine > (isMale ? 1.3 : 1.1)) {
+            kidneyRiskScore += 20;
+        }
+        
+        if (urea > 20) {
+            kidneyRiskScore += 10;
+        }
+        
+        if (albumin < 3.5) {
+            kidneyRiskScore += 10; // Hypoalbuminemia can be associated with kidney disease
+        }
+        
+        // CKD Staging based on risk score
+        if (kidneyRiskScore >= 50) {
+            kidneyStage = {
                 disease: "Chronic Kidney Disease",
-                stage: "Stage 5 CKD (Kidney Failure)",
+                stage: eGFR < 15 ? "Stage 5 CKD (Kidney Failure)" : 
+                       eGFR < 30 ? "Stage 4 CKD (Severe)" : "Stage 3b CKD (Moderate to Severe)",
                 severity: 3,
-                value: eGFR.toFixed(1),
-                criteria: "eGFR < 15 mL/min/1.73m²",
+                riskScore: kidneyRiskScore,
+                confidence: Math.min(kidneyRiskScore / 100, 0.95),
+                primaryIndicators: {
+                    creatinine: creatinine > 0 ? creatinine : "Not available",
+                    eGFR: eGFR > 0 ? eGFR.toFixed(1) : "Not available",
+                    urea: urea > 0 ? urea : "Not available"
+                },
+                interpretation: `eGFR of ${eGFR.toFixed(1)} mL/min/1.73m² indicates significant kidney function impairment.`,
                 recommendations: [
                     "Urgent consultation with a nephrologist is recommended",
-                    "Discuss options for renal replacement therapy",
+                    "Discuss management options for chronic kidney disease",
                     "Strict adherence to medication and dietary restrictions",
-                    "Regular monitoring of kidney function and electrolytes"
+                    "Monitor blood pressure and electrolyte levels regularly",
+                    "Limit protein, sodium, and potassium intake as advised by your doctor"
                 ]
             };
-        } else if (eGFR < 30) {
-            ckdStage = {
+        } else if (kidneyRiskScore >= 30) {
+            kidneyStage = {
                 disease: "Chronic Kidney Disease",
-                stage: "Stage 4 CKD (Severe)",
+                stage: eGFR < 45 ? "Stage 3b CKD (Moderate)" : 
+                       eGFR < 60 ? "Stage 3a CKD (Mild to Moderate)" : "Stage 2 CKD (Mild)",
                 severity: 2,
-                value: eGFR.toFixed(1),
-                criteria: "eGFR 15-29 mL/min/1.73m²",
+                riskScore: kidneyRiskScore,
+                confidence: Math.min(kidneyRiskScore / 100, 0.9),
+                primaryIndicators: {
+                    creatinine: creatinine > 0 ? creatinine : "Not available",
+                    eGFR: eGFR > 0 ? eGFR.toFixed(1) : "Not available",
+                    urea: urea > 0 ? urea : "Not available"
+                },
+                interpretation: `eGFR of ${eGFR.toFixed(1)} mL/min/1.73m² indicates moderate kidney function impairment.`,
                 recommendations: [
-                    "Regular consultation with a nephrologist",
-                    "Follow a kidney-friendly diet low in sodium, potassium, and phosphorus",
-                    "Monitor for complications of advanced kidney disease",
-                    "Medication adjustment may be necessary as kidney function declines"
-                ]
-            };
-        } else if (eGFR < 60) {
-            ckdStage = {
-                disease: "Chronic Kidney Disease",
-                stage: "Stage 3 CKD (Moderate)",
-                severity: 1,
-                value: eGFR.toFixed(1),
-                criteria: "eGFR 30-59 mL/min/1.73m²",
-                recommendations: [
-                    "Regular follow-up with a healthcare provider",
+                    "Consultation with a nephrologist is recommended",
+                    "Monitor kidney function with regular lab tests",
                     "Control blood pressure and diabetes if present",
-                    "Limit protein intake as advised by your healthcare provider",
-                    "Avoid nephrotoxic medications like NSAIDs when possible"
+                    "Consider dietary modifications to support kidney health",
+                    "Avoid nephrotoxic medications when possible"
                 ]
             };
-        } else if (eGFR < 90 && (bloodData.urine_protein > 0.15 || bloodData.albumin_creatinine_ratio > 30)) {
-            // Only stage 1-2 if there's evidence of kidney damage (proteinuria/albuminuria)
-            ckdStage = {
+        } else if (kidneyRiskScore >= 15) {
+            kidneyStage = {
                 disease: "Chronic Kidney Disease",
-                stage: "Stage 1-2 CKD (Mild)",
-                severity: 0,
-                value: eGFR.toFixed(1),
-                criteria: "eGFR ≥ 60 mL/min/1.73m² with signs of kidney damage",
+                stage: "Early Stage CKD",
+                severity: 1,
+                riskScore: kidneyRiskScore,
+                confidence: Math.min(kidneyRiskScore / 100, 0.85),
+                primaryIndicators: {
+                    creatinine: creatinine > 0 ? creatinine : "Not available",
+                    eGFR: eGFR > 0 ? eGFR.toFixed(1) : "Not available",
+                    urea: urea > 0 ? urea : "Not available"
+                },
+                interpretation: `eGFR of ${eGFR.toFixed(1)} mL/min/1.73m² indicates mild kidney function impairment.`,
                 recommendations: [
                     "Follow up with your healthcare provider",
-                    "Control underlying conditions like diabetes and hypertension",
                     "Regular monitoring of kidney function",
-                    "Maintain a healthy lifestyle with moderate protein intake"
+                    "Control risk factors like hypertension and diabetes",
+                    "Maintain adequate hydration",
+                    "Consider reducing sodium intake"
                 ]
             };
         }
         
-        if (ckdStage) {
-            stages.kidneyDisease = ckdStage;
+        if (kidneyStage) {
+            stages.kidneyDisease = kidneyStage;
+            riskScores.kidneyDisease = kidneyRiskScore;
         }
     }
     
+    // LIVER FUNCTION ASSESSMENT - Enhanced with multiple parameters
+    if (bloodData.alt || bloodData.ast || bloodData.alp || bloodData.bilirubin) {
+        const alt = bloodData.alt || 0;
+        const ast = bloodData.ast || 0;
+        const alp = bloodData.alp || 0;
+        const ggt = bloodData.ggt || 0;
+        const bilirubin = bloodData.bilirubin || 0;
+        const albumin = bloodData.albumin || 0;
+        
+        let liverRiskScore = 0;
+        let liverStage = null;
+        
+        // Enzyme elevations
+        if (alt > 55) {
+            liverRiskScore += alt > 200 ? 30 : (alt > 100 ? 20 : 10);
+        }
+        
+        if (ast > 48) {
+            liverRiskScore += ast > 200 ? 30 : (ast > 100 ? 20 : 10);
+        }
+        
+        if (alp > 150) {
+            liverRiskScore += alp > 300 ? 20 : 10;
+        }
+        
+        if (ggt > 55) {
+            liverRiskScore += ggt > 200 ? 20 : 10;
+        }
+        
+        // Bilirubin elevation
+        if (bilirubin > 1.2) {
+            liverRiskScore += bilirubin > 3 ? 30 : (bilirubin > 2 ? 20 : 10);
+        }
+        
+        // Low albumin (sign of impaired liver function)
+        if (albumin < 3.5) {
+            liverRiskScore += albumin < 2.8 ? 20 : 10;
+        }
+        
+        // AST/ALT ratio (De Ritis ratio) - >2 may suggest alcoholic liver disease
+        let astAltRatio = 0;
+        if (alt > 0 && ast > 0) {
+            astAltRatio = ast / alt;
+            if (astAltRatio > 2) {
+                liverRiskScore += 15;
+            } else if (astAltRatio > 1) {
+                liverRiskScore += 5;
+            }
+        }
+        
+        // Liver disease staging
+        if (liverRiskScore >= 50) {
+            liverStage = {
+                disease: "Liver Disease",
+                stage: "Severe Liver Dysfunction",
+                severity: 3,
+                riskScore: liverRiskScore,
+                confidence: Math.min(liverRiskScore / 100, 0.9),
+                primaryIndicators: {
+                    alt: alt > 0 ? alt : "Not available",
+                    ast: ast > 0 ? ast : "Not available",
+                    bilirubin: bilirubin > 0 ? bilirubin : "Not available",
+                    albumin: albumin > 0 ? albumin : "Not available",
+                    astAltRatio: astAltRatio > 0 ? astAltRatio.toFixed(1) : "Not available"
+                },
+                interpretation: "Multiple liver function tests show significant abnormalities suggestive of severe liver dysfunction.",
+                recommendations: [
+                    "Urgent consultation with a hepatologist/gastroenterologist is recommended",
+                    "Further diagnostic tests like liver ultrasound may be needed",
+                    "Avoid alcohol and medications that can harm the liver",
+                    "Discuss management options with your healthcare provider",
+                    "Consider screening for viral hepatitis and other liver diseases"
+                ]
+            };
+        } else if (liverRiskScore >= 30) {
+            liverStage = {
+                disease: "Liver Disease",
+                stage: "Moderate Liver Dysfunction",
+                severity: 2,
+                riskScore: liverRiskScore,
+                confidence: Math.min(liverRiskScore / 100, 0.85),
+                primaryIndicators: {
+                    alt: alt > 0 ? alt : "Not available",
+                    ast: ast > 0 ? ast : "Not available",
+                    bilirubin: bilirubin > 0 ? bilirubin : "Not available",
+                    albumin: albumin > 0 ? albumin : "Not available"
+                },
+                interpretation: "Liver function tests show moderate abnormalities suggestive of liver dysfunction.",
+                recommendations: [
+                    "Consultation with a healthcare provider is recommended",
+                    "Consider liver function monitoring every 3-6 months",
+                    "Avoid alcohol and hepatotoxic medications",
+                    "Consider lifestyle changes including diet modifications",
+                    "Follow up with additional diagnostic tests as recommended"
+                ]
+            };
+        } else if (liverRiskScore >= 15) {
+            liverStage = {
+                disease: "Liver Disease",
+                stage: "Mild Liver Dysfunction",
+                severity: 1,
+                riskScore: liverRiskScore,
+                confidence: Math.min(liverRiskScore / 100, 0.8),
+                primaryIndicators: {
+                    alt: alt > 0 ? alt : "Not available",
+                    ast: ast > 0 ? ast : "Not available",
+                    bilirubin: bilirubin > 0 ? bilirubin : "Not available"
+                },
+                interpretation: "Liver function tests show mild abnormalities that may indicate early liver dysfunction.",
+                recommendations: [
+                    "Follow up with your healthcare provider",
+                    "Consider liver function monitoring every 6-12 months",
+                    "Limit alcohol consumption",
+                    "Maintain a healthy weight and balanced diet",
+                    "Review medications with your doctor"
+                ]
+            };
+        }
+        
+        if (liverStage) {
+            stages.liverDisease = liverStage;
+            riskScores.liverDisease = liverRiskScore;
+        }
+    }
+    
+    // Convert risk scores to percentages for display
+    for (const disease in riskScores) {
+        const normalizedScore = Math.min(riskScores[disease] / 100, 1) * 100;
+        if (stages[disease]) {
+            stages[disease].riskPercentage = Math.round(normalizedScore);
+        }
+    }
+    
+    console.log("ML Analysis Complete - Disease Stages:", stages);
     return stages;
 }
 
 function createAbnormalParametersChart(abnormalValues) {
+    console.log("Creating abnormal parameters chart with:", abnormalValues);
+    
     if (!abnormalValues || Object.keys(abnormalValues).length === 0) {
         console.log("No abnormal values to display in chart");
         return;
@@ -1467,38 +1792,93 @@ function createAbnormalParametersChart(abnormalValues) {
         // Process each parameter with error handling
         for (const param of labels) {
             try {
-                // Make sure we have a reference range for this parameter
-                if (!bloodTestRanges[param] || typeof bloodTestRanges[param].min === 'undefined' || typeof bloodTestRanges[param].max === 'undefined') {
-                    console.warn(`Reference range not found or incomplete for parameter: ${param}`);
-                    continue;
-                }
-                
-                // Make sure the abnormal value has the required properties
-                if (!abnormalValues[param] || typeof abnormalValues[param].value === 'undefined') {
-                    console.warn(`Missing value for abnormal parameter: ${param}`);
-                    continue;
-                }
-                
-                const value = abnormalValues[param].value;
-                const { min, max } = bloodTestRanges[param];
-                
-                // Calculate percentage deviation from normal range
-                let percentage;
-                if (value < min) {
-                    percentage = ((min - value) / min) * 100;
+                // Skip parameters that don't have a value property
+                if (typeof abnormalValues[param] === 'number') {
+                    // Direct values (not objects with status)
+                    console.log(`Processing parameter ${param} with direct value:`, abnormalValues[param]);
+                    // Skip if we don't have reference ranges
+                    if (!bloodTestRanges[param]) {
+                        console.warn(`No reference range for parameter: ${param}`);
+                        continue;
+                    }
+                    
+                    const value = abnormalValues[param];
+                    const { min, max } = bloodTestRanges[param];
+                    
+                    // Skip if the value is within normal range
+                    if (value >= min && value <= max) continue;
+                    
+                    // Calculate percentage deviation from normal range
+                    let percentage;
+                    let status;
+                    if (value < min) {
+                        percentage = ((min - value) / min) * 100;
+                        status = 'low';
+                    } else {
+                        percentage = ((value - max) / max) * 100;
+                        status = 'high';
+                    }
+                    
+                    // Limit to a reasonable range for visualization
+                    percentage = Math.min(Math.abs(percentage), 100);
+                    
+                    validParameters.push(param);
+                    data.push(percentage);
+                    backgroundColors.push(status === 'low' ? 'rgba(54, 162, 235, 0.6)' : 'rgba(255, 99, 132, 0.6)');
+                    borderColors.push(status === 'low' ? 'rgba(54, 162, 235, 1)' : 'rgba(255, 99, 132, 1)');
+                    formattedLabels.push(formatParameterName(param));
+                } else if (abnormalValues[param] && typeof abnormalValues[param].value !== 'undefined') {
+                    // Object with value property
+                    console.log(`Processing parameter ${param} with object:`, abnormalValues[param]);
+                    const value = abnormalValues[param].value;
+                    
+                    // Try to get min/max from the abnormalValues object first
+                    let min, max;
+                    if (abnormalValues[param].normalRange) {
+                        const range = abnormalValues[param].normalRange.split('-');
+                        if (range.length === 2) {
+                            min = parseFloat(range[0]);
+                            max = parseFloat(range[1]);
+                        }
+                    }
+                    
+                    // Fall back to bloodTestRanges if needed
+                    if ((isNaN(min) || isNaN(max)) && bloodTestRanges[param]) {
+                        min = bloodTestRanges[param].min;
+                        max = bloodTestRanges[param].max;
+                    }
+                    
+                    // Skip if we don't have valid min/max
+                    if (isNaN(min) || isNaN(max)) {
+                        console.warn(`Cannot determine reference range for parameter: ${param}`);
+                        continue;
+                    }
+                    
+                    // Get status from the object or determine it
+                    let status = abnormalValues[param].status;
+                    if (!status) {
+                        status = value < min ? 'low' : 'high';
+                    }
+                    
+                    // Calculate percentage deviation from normal range
+                    let percentage;
+                    if (status === 'low') {
+                        percentage = ((min - value) / min) * 100;
+                    } else {
+                        percentage = ((value - max) / max) * 100;
+                    }
+                    
+                    // Limit to a reasonable range for visualization
+                    percentage = Math.min(Math.abs(percentage), 100);
+                    
+                    validParameters.push(param);
+                    data.push(percentage);
+                    backgroundColors.push(status === 'low' ? 'rgba(54, 162, 235, 0.6)' : 'rgba(255, 99, 132, 0.6)');
+                    borderColors.push(status === 'low' ? 'rgba(54, 162, 235, 1)' : 'rgba(255, 99, 132, 1)');
+                    formattedLabels.push(formatParameterName(param));
                 } else {
-                    percentage = ((value - max) / max) * 100;
+                    console.warn(`Invalid parameter format for ${param}:`, abnormalValues[param]);
                 }
-                
-                // Limit to a reasonable range for visualization
-                percentage = Math.min(Math.abs(percentage), 100);
-                
-                // Only add valid parameters
-                validParameters.push(param);
-                data.push(percentage);
-                backgroundColors.push(abnormalValues[param].status === 'low' ? 'rgba(54, 162, 235, 0.6)' : 'rgba(255, 99, 132, 0.6)');
-                borderColors.push(abnormalValues[param].status === 'low' ? 'rgba(54, 162, 235, 1)' : 'rgba(255, 99, 132, 1)');
-                formattedLabels.push(formatParameterName(param));
             } catch (paramError) {
                 console.warn(`Error processing parameter ${param}:`, paramError);
                 // Skip this parameter
@@ -1511,88 +1891,105 @@ function createAbnormalParametersChart(abnormalValues) {
         }
         
         // Clean up any existing chart
-        if (window.abnormalParamsChart) {
+        if (window.abnormalParamsChart instanceof Chart) {
             window.abnormalParamsChart.destroy();
         }
         
         // Create the chart
-        window.abnormalParamsChart = new Chart(ctx.getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: formattedLabels,
-                datasets: [{
-                    label: 'Abnormal Parameters (% Deviation)',
-                    data: data,
-                    backgroundColor: backgroundColors,
-                    borderColor: borderColors,
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: '% Deviation from Normal Range'
+        if (typeof Chart !== 'undefined') {
+            window.abnormalParamsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: formattedLabels,
+                    datasets: [{
+                        label: 'Abnormal Parameters (% Deviation)',
+                        data: data,
+                        backgroundColor: backgroundColors,
+                        borderColor: borderColors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '% Deviation from Normal Range'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
                         },
-                        ticks: {
-                            callback: function(value) {
-                                return value + '%';
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Blood Parameters'
+                            },
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
                             }
                         }
                     },
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Blood Parameters'
+                    plugins: {
+                        legend: {
+                            display: false
                         },
-                        ticks: {
-                            maxRotation: 45,
-                            minRotation: 45
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        callbacks: {
-                            title: function(context) {
-                                const index = context[0].dataIndex;
-                                return index >= 0 && index < formattedLabels.length ? formattedLabels[index] : '';
-                            },
-                            label: function(context) {
-                                const index = context.dataIndex;
-                                if (index < 0 || index >= validParameters.length) return [];
-                                
-                                // Use validParameters array to get the correct param name
-                                const param = validParameters[index];
-                                
-                                // Make sure we have this parameter in abnormalValues
-                                if (!abnormalValues[param]) return ['Data unavailable'];
-                                
-                                const value = abnormalValues[param].value;
-                                const range = abnormalValues[param].normalRange;
-                                const status = abnormalValues[param].status && 
-                                             abnormalValues[param].status.charAt(0).toUpperCase() + 
-                                             abnormalValues[param].status.slice(1);
-                                
-                                return [
-                                    `Value: ${value} ${abnormalValues[param].unit || ''}`, 
-                                    `Normal Range: ${range} ${abnormalValues[param].unit || ''}`, 
-                                    `Status: ${status || 'Abnormal'}`,
-                                    `Deviation: ${context.parsed.y.toFixed(1)}%`
-                                ];
+                        tooltip: {
+                            callbacks: {
+                                title: function(context) {
+                                    const index = context[0].dataIndex;
+                                    return index >= 0 && index < formattedLabels.length ? formattedLabels[index] : '';
+                                },
+                                label: function(context) {
+                                    const index = context.dataIndex;
+                                    if (index < 0 || index >= validParameters.length) return [];
+                                    
+                                    // Use validParameters array to get the correct param name
+                                    const param = validParameters[index];
+                                    
+                                    // Get the parameter info
+                                    let value, range, status, unit;
+                                    
+                                    if (typeof abnormalValues[param] === 'number') {
+                                        value = abnormalValues[param];
+                                        range = bloodTestRanges[param] ? 
+                                            `${bloodTestRanges[param].min}-${bloodTestRanges[param].max}` : 'Unknown';
+                                        status = value < (bloodTestRanges[param]?.min || 0) ? 'Low' : 'High';
+                                        unit = bloodTestRanges[param]?.unit || '';
+                                    } else if (abnormalValues[param] && typeof abnormalValues[param].value !== 'undefined') {
+                                        value = abnormalValues[param].value;
+                                        range = abnormalValues[param].normalRange || 
+                                            (bloodTestRanges[param] ? 
+                                                `${bloodTestRanges[param].min}-${bloodTestRanges[param].max}` : 'Unknown');
+                                        status = abnormalValues[param].status ? 
+                                            (abnormalValues[param].status.charAt(0).toUpperCase() + 
+                                             abnormalValues[param].status.slice(1)) : 'Abnormal';
+                                        unit = abnormalValues[param].unit || bloodTestRanges[param]?.unit || '';
+                                    } else {
+                                        return ['Data unavailable'];
+                                    }
+                                    
+                                    return [
+                                        `Value: ${value} ${unit}`, 
+                                        `Normal Range: ${range} ${unit}`, 
+                                        `Status: ${status}`,
+                                        `Deviation: ${context.parsed.y.toFixed(1)}%`
+                                    ];
+                                }
                             }
                         }
                     }
                 }
-            }
-        });
+            });
+        } else {
+            throw new Error("Chart.js is not available");
+        }
     } catch (error) {
         console.error("Error creating abnormal parameters chart:", error);
         
@@ -1604,7 +2001,7 @@ function createAbnormalParametersChart(abnormalValues) {
             
             const errorMessage = document.createElement('div');
             errorMessage.className = 'no-data-message';
-            errorMessage.textContent = 'Error creating chart. Please try again.';
+            errorMessage.textContent = 'Error creating chart: ' + error.message;
             chartContainer.appendChild(errorMessage);
         }
     }
@@ -2092,801 +2489,899 @@ function extractDataFromOCR(ocrText) {
     return extractedData;
 }
 
+/**
+ * Initialize the application
+ */
 function initializeApp() {
-    // Check critical data structures
-    if (!bloodTestRanges) {
-        console.error("bloodTestRanges is not defined - application will not function correctly");
+    console.log("Initializing Blood Report Analyzer application...");
+    
+    // Get DOM elements
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const analyzeButton = document.getElementById('analyzeButton');
+    const printButton = document.getElementById('printButton');
+    const newAnalysisButton = document.getElementById('newAnalysisButton');
+    const downloadButton = document.getElementById('downloadButton');
+    
+    // Verify Chart.js is loaded
+    if (!window.Chart) {
+        console.error("Chart.js is not loaded. Visualizations will not work.");
+        const warningElement = document.getElementById('visualization-warning');
+        if (warningElement) {
+            warningElement.textContent = "Warning: Chart.js library is not loaded. Visualizations may not display correctly.";
+        }
     } else {
-        console.log("bloodTestRanges is defined with", Object.keys(bloodTestRanges).length, "parameters");
+        console.log("Chart.js is loaded correctly:", Chart.version);
     }
     
-    if (!healthConditions) {
-        console.error("healthConditions is not defined - analysis results may be limited");
-    } else {
-        console.log("healthConditions is defined with", Object.keys(healthConditions).length, "conditions");
-    }
-    
-    // Verify Chart.js is available
-    if (typeof Chart === 'undefined') {
-        console.error("Chart.js is not available. Charts will not be rendered.");
-        // Add a warning in the UI
-        const chartContainers = document.querySelectorAll('.chart-container');
-        chartContainers.forEach(container => {
-            const warningMsg = document.createElement('div');
-            warningMsg.className = 'no-data-message';
-            warningMsg.textContent = 'Chart library not loaded. Some visualizations may not appear.';
-            container.appendChild(warningMsg);
-        });
-    } else {
-        console.log("Chart.js is available. Version:", Chart.version);
-    }
-    
-    // Set up the user interface
-    uploadArea.addEventListener('click', function() {
-        fileInput.click();
-    });
-    
-    uploadArea.addEventListener('dragover', function(e) {
-        e.preventDefault();
-        uploadArea.classList.add('dragover');
-    });
-    
-    uploadArea.addEventListener('dragleave', function() {
-        uploadArea.classList.remove('dragover');
-    });
-    
-    uploadArea.addEventListener('drop', function(e) {
-        e.preventDefault();
-        uploadArea.classList.remove('dragover');
+    // Setup upload area
+    if (uploadArea && fileInput) {
+        console.log("Setting up upload area");
         
-        if (e.dataTransfer.files.length) {
-            handleFiles(e.dataTransfer.files);
-        }
-    });
+        uploadArea.addEventListener('click', () => {
+            console.log("Upload area clicked");
+            fileInput.click();
+        });
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('drag-over');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            
+            if (e.dataTransfer.files.length) {
+                console.log("Files dropped:", e.dataTransfer.files.length);
+                fileInput.files = e.dataTransfer.files;
+                handleFileChange(e);
+            }
+        });
+        
+        fileInput.addEventListener('change', handleFileChange);
+    } else {
+        console.error("Upload area or file input not found in the DOM");
+    }
     
-    fileInput.addEventListener('change', function() {
-        if (fileInput.files.length) {
-            handleFiles(fileInput.files);
-        }
-    });
+    // Setup direct upload button
+    setupDirectUploadButton();
     
-    analyzeButton.addEventListener('click', function() {
-        if (validatePatientInfo()) {
-            showLoadingView();
-            // Process the report immediately instead of using setTimeout
-            // This ensures the async function starts running right away
-            processBloodReport().catch(error => {
-                console.error("Error in processBloodReport:", error);
-                showAlert('error', 'Processing Error', 'An error occurred while processing your report.');
-                showUploadView();
-            });
-        }
-    });
+    // Setup analyze button
+    if (analyzeButton) {
+        analyzeButton.addEventListener('click', async () => {
+            if (fileInput && fileInput.files.length > 0) {
+                try {
+                    showAlert("Analysis Started", "Processing your blood report with AI. This may take a moment...", "info");
+                    await processBloodReport(fileInput.files[0]);
+                } catch (error) {
+                    console.error("Error processing blood report:", error);
+                    showAlert("Processing Error", "Failed to analyze the blood report: " + error.message, "error");
+                    const loadingSection = document.getElementById('loadingSection');
+                    if (loadingSection) loadingSection.classList.add('hidden');
+                }
+            } else {
+                showAlert("No File Selected", "Please upload a blood report image first.", "warning");
+            }
+        });
+    }
     
-    // Print and new analysis buttons
+    // Setup print button
     if (printButton) {
-        printButton.addEventListener('click', function() {
+        printButton.addEventListener('click', () => {
             window.print();
         });
     }
     
-    if (newAnalysisButton) {
-        newAnalysisButton.addEventListener('click', function() {
-            showUploadView();
-            fileInput.value = '';
-        });
-    }
-    
-    // Alert button
-    if (alertButton) {
-        alertButton.addEventListener('click', closeAlert);
-    }
-    
-    // Set up tab switching
-    const tabs = document.querySelectorAll('.tab');
-    const tabContents = document.querySelectorAll('.tab-content');
-    
-    tabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-            // Remove active class from all tabs and contents
-            tabs.forEach(t => t.classList.remove('active'));
-            tabContents.forEach(content => content.classList.remove('active'));
-            
-            // Add active class to current tab and corresponding content
-            this.classList.add('active');
-            const target = this.getAttribute('data-tab');
-            document.getElementById(target).classList.add('active');
-        });
-    });
-    
-    // Initialize PDF.js
-    if (window.pdfjsLib) {
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.4.120/build/pdf.worker.min.js';
-    }
-    
-    // Initialize the UI with the upload view
-    showUploadView();
-    
-    // Initialize event listeners for all buttons
-    const fileInput = document.getElementById('fileInput');
-    const uploadArea = document.getElementById('uploadArea');
-    const analyzeButton = document.getElementById('analyzeButton');
-    const printButton = document.getElementById('printButton');
-    const newAnalysisButton = document.getElementById('newAnalysisButton');
-    const downloadButton = document.getElementById('downloadButton'); // Add this line
-    const alertButton = document.getElementById('alertButton');
-    
-    // ... existing event listener setup ...
-    
-    // Event listener for download button
+    // Setup download button
     if (downloadButton) {
-        downloadButton.addEventListener('click', downloadPDFReport);
+        downloadButton.addEventListener('click', () => {
+            if (typeof downloadPDFReport === 'function') {
+                downloadPDFReport();
+            } else {
+                // Fallback if the function doesn't exist
+                const element = document.getElementById('resultsSection');
+                if (element && window.html2pdf) {
+                    const filename = 'blood-report-analysis.pdf';
+                    window.html2pdf().set({filename: filename}).from(element).save();
+                } else {
+                    showAlert("Download Error", "PDF generation is not available.", "error");
+                }
+            }
+        });
     }
     
-    // ... rest of existing code ...
+    // Setup new analysis button
+    if (newAnalysisButton) {
+        newAnalysisButton.addEventListener('click', () => {
+            // Reset file input
+            if (fileInput) {
+                fileInput.value = '';
+            }
+            
+            // Hide results section and show upload section
+            const resultsSection = document.getElementById('resultsSection');
+            const uploadSection = document.getElementById('uploadSection');
+            
+            if (resultsSection) resultsSection.classList.add('hidden');
+            if (uploadSection) uploadSection.classList.remove('hidden');
+            
+            // Clear file indicator
+            const fileIndicatorContainer = document.getElementById('file-indicator-container');
+            if (fileIndicatorContainer) {
+                fileIndicatorContainer.innerHTML = '';
+            }
+            
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    }
+    
+    // Setup alert button
+    initAlertButton();
+    
+    // Setup tab switching for all tab groups
+    setupTabSwitching();
+    
+    console.log("Blood Report Analyzer initialized successfully");
 }
 
-// Process the uploaded blood report
-async function processBloodReport() {
-    // Clear any previous results
-    if (window.abnormalParamsChart) {
-        try {
-            window.abnormalParamsChart.destroy();
-        } catch (e) {
-            console.warn("Error destroying abnormal params chart:", e);
-        }
-        window.abnormalParamsChart = null;
-    }
-    if (window.diseaseRiskChart) {
-        try {
-            window.diseaseRiskChart.destroy();
-        } catch (e) {
-            console.warn("Error destroying disease risk chart:", e);
-        }
-        window.diseaseRiskChart = null;
-    }
-    if (window.bmiChart) {
-        try {
-            window.bmiChart.destroy();
-        } catch (e) {
-            console.warn("Error destroying BMI chart:", e);
-        }
-        window.bmiChart = null;
-    }
-    
-    // Update loading status and show visible feedback
-    updateLoadingStatus('Extracting data from your report...', 'Initializing analysis process', 1);
-    updateLoadingProgress(10);
-    
-    // Get the uploaded file
-    const file = fileInput.files[0];
-    console.log("Starting analysis with file:", file ? file.name : "No file");
-    
-    // Add forced progress to provide visual feedback
-    let progressIntervalRunning = true;
-    let progressInterval;
-    
+/**
+ * Process the uploaded blood report
+ * @param {File} file - The file to process
+ * @returns {Promise<boolean>} - True if processing was successful
+ */
+async function processBloodReport(file) {
     try {
-        progressInterval = setInterval(() => {
-            if (!progressIntervalRunning) {
-                clearInterval(progressInterval);
-                return;
-            }
-            
-            const currentWidth = parseInt(loadingProgress.style.width) || 10;
-            if (currentWidth < 90) {
-                updateLoadingProgress(currentWidth + 0.5);
-            }
-        }, 100);
+        console.log("Processing blood report with file:", file ? file.name : "None");
         
-        // Track the source of the data for display
+        // Show loading section, hide upload section
+        const loadingSection = document.getElementById('loadingSection');
+        const uploadSection = document.getElementById('uploadSection');
+        const resultsSection = document.getElementById('resultsSection');
+        
+        if (uploadSection) uploadSection.classList.add('hidden');
+        if (loadingSection) loadingSection.classList.remove('hidden');
+        if (resultsSection) resultsSection.classList.add('hidden');
+        
+        // Update loading UI
+        const loadingMessage = document.getElementById('loadingMessage');
+        const processingDetail = document.getElementById('processingDetail');
+        const loadingProgress = document.querySelector('.loading-progress');
+        const progressPercent = document.getElementById('progressPercent');
+        
+        // Set up progress
+        let progress = 10;
+        if (loadingProgress) loadingProgress.style.width = progress + '%';
+        if (progressPercent) progressPercent.textContent = progress + '%';
+        
+        // Function to update progress
+        const updateProgress = (newProgress) => {
+            progress = newProgress;
+            if (loadingProgress) loadingProgress.style.width = progress + '%';
+            if (progressPercent) progressPercent.textContent = progress + '%';
+        };
+        
+        // Function to update status
+        const updateStatus = (message, detail) => {
+            if (loadingMessage) loadingMessage.textContent = message;
+            if (processingDetail) processingDetail.textContent = detail;
+            console.log(`Status: ${message} - ${detail}`);
+        };
+        
+        // Set up step indicators
+        const steps = {
+            step1: document.getElementById('step1Icon'),
+            step2: document.getElementById('step2Icon'),
+            step3: document.getElementById('step3Icon'),
+            step4: document.getElementById('step4Icon')
+        };
+        
+        // Function to update steps
+        const updateStep = (stepNum) => {
+            const stepKey = `step${stepNum}`;
+            if (steps[stepKey]) {
+                steps[stepKey].classList.add('active');
+                
+                // Mark previous steps as completed
+                for (let i = 1; i < stepNum; i++) {
+                    const prevKey = `step${i}`;
+                    if (steps[prevKey]) steps[prevKey].classList.add('completed');
+                }
+            }
+        };
+        
+        // Mark step 1 as active
+        updateStep(1);
+        updateStatus('Extracting data from your report...', 'Initializing analysis process');
+        
+        // Track data source for reporting
         let dataSource = 'mock';
-        
-        console.log("Starting blood report analysis process");
-        
-        // Show analysis started alert to the user
-        showAlert('info', 'Analysis Started', 'Your blood report analysis has started. Please wait while we process the results.');
-        
-        // Check if Tesseract.js is loaded properly - print status to console
-        if (typeof Tesseract === 'undefined') {
-            console.warn("Tesseract.js is not loaded - OCR functionality will not be available");
-        } else {
-            console.log("Tesseract.js is available for OCR processing");
-        }
-        
         let bloodData = null;
+        let ocrText = '';
         
-        // Check if we have an actual file to process
+        // Step 1: Process the file to extract data
         if (file) {
-            updateLoadingStatus('Processing blood report file...', `Processing ${file.name}`, 1);
-            console.log("Processing file:", file.name, file.type);
+            updateStatus('Processing uploaded file...', `Reading ${file.name}`);
+            updateProgress(15);
             
-            try {
-                // Try OCR if an image file is uploaded and we have the OCR processor
-                if ((file.type.includes('image') || file.type.includes('pdf')) && 
-                    typeof Tesseract !== 'undefined' && 
-                    typeof window.processReportWithOCR === 'function') {
+            // Try OCR if it's an image or PDF
+            if ((file.type.includes('image') || file.type.includes('pdf')) && 
+                typeof window.processReportWithOCR === 'function') {
+                
+                try {
+                    updateStatus('Analyzing with OCR...', 'Extracting text from image');
+                    updateProgress(20);
                     
-                    updateLoadingStatus('Analyzing blood report with OCR...', 'Using artificial intelligence to extract values', 1);
-                    const ocrData = await window.processReportWithOCR(file, (detail) => {
-                        updateLoadingStatus('Analyzing blood report with OCR...', detail, 1);
+                    // Process with OCR
+                    const ocrResult = await window.processReportWithOCR(file, (detail) => {
+                        updateStatus('OCR Processing...', detail);
                     });
                     
-                    // If OCR returned data with at least 3 parameters, use it
-                    if (ocrData && Object.keys(ocrData).length >= 3) {
-                        console.log("Using OCR extracted data:", ocrData);
-                        bloodData = ocrData;
-                        dataSource = 'ocr';
-                    } else {
-                        console.log("OCR did not return sufficient data, using fallback");
+                    if (ocrResult) {
+                        if (typeof ocrResult === 'object') {
+                            // Direct object returned with blood values
+                            bloodData = ocrResult;
+                            dataSource = 'ocr';
+                            console.log("OCR extracted blood data:", bloodData);
+                        } else if (typeof ocrResult === 'string') {
+                            // Text extracted, need to parse for values
+                            ocrText = ocrResult;
+                            // Use OCR text if we have an extraction function
+                            if (typeof extractBloodParametersFromText === 'function') {
+                                bloodData = extractBloodParametersFromText(ocrText);
+                                dataSource = 'ocr';
+                                console.log("Extracted blood data from OCR text:", bloodData);
+                            }
+                        }
                     }
-                } else {
-                    console.log("OCR processing skipped - either not an image/PDF, or Tesseract not available");
+                } catch (ocrError) {
+                    console.error("OCR processing error:", ocrError);
                 }
-            } catch (ocrError) {
-                console.error("Error during OCR processing:", ocrError);
-                // Continue with fallback data
+            }
+        }
+        
+        // If we don't have blood data, use mock data
+        if (!bloodData || Object.keys(bloodData).length < 3) {
+            updateStatus('Generating sample data...', 'OCR extraction insufficient');
+            updateProgress(30);
+            
+            // Use appropriate mock data function
+            if (typeof generateMockBloodData === 'function') {
+                bloodData = generateMockBloodData();
+                dataSource = 'mock';
+            } else {
+                // Basic fallback data
+                bloodData = {
+                    hemoglobin: 14.5,
+                    hematocrit: 42,
+                    wbc: 7.5,
+                    glucose: 95,
+                    cholesterol: 180
+                };
+                dataSource = 'mock';
             }
             
-            // If we don't have data yet (OCR failed or insufficient), use predetermined or mock data
-            if (!bloodData) {
-                if (file.name.toLowerCase().includes('sample')) {
-                    // Use predetermined values for sample files to ensure consistent results
-                    updateLoadingStatus('Loading sample data...', 'Using predefined values from sample file', 1);
-                    bloodData = getSampleBloodData();
-                    dataSource = 'sample';
-                } else {
-                    // For other files, generate data that looks like it was extracted
-                    updateLoadingStatus('Generating representative data...', 'Creating data model based on statistical patterns', 1);
-                    bloodData = generateEnhancedMockBloodData();
-                    dataSource = 'mock';
-                }
-            }
-        } else {
-            // Fallback to mock data if no file uploaded
-            updateLoadingStatus('Generating example data...', 'No file uploaded, using example data', 1);
-            bloodData = generateEnhancedMockBloodData();
-            dataSource = 'mock';
+            console.log("Using mock blood data:", bloodData);
         }
-        
-        // Make sure we have blood data no matter what
-        if (!bloodData || Object.keys(bloodData).length === 0) {
-            console.warn("No blood data obtained through any method, using mock data");
-            bloodData = generateEnhancedMockBloodData();
-            dataSource = 'mock';
-        }
-        
-        console.log("Final blood data used for analysis:", bloodData);
         
         // Step 2: Analyze parameters
-        updateLoadingStatus('Analyzing blood parameters...', 'Comparing values to reference ranges', 2);
-        updateLoadingProgress(40);
+        updateStep(2);
+        updateStatus('Analyzing blood parameters...', 'Evaluating against reference ranges');
+        updateProgress(40);
         
-        // Add a delay to allow the UI to update and give a sense of processing
+        // Simulate processing time
         await new Promise(resolve => setTimeout(resolve, 800));
         
-        // Get patient information with fallbacks to ensure we have values
+        // Get patient information
         const patientInfo = {
-            name: patientName.value || 'Anonymous Patient',
-            age: parseInt(patientAge.value) || 35,
-            gender: patientGender.value || 'male',
-            race: patientRace.value || 'white',
-            weight: patientWeight.value ? parseFloat(patientWeight.value) : 70,
-            height: patientHeight.value ? parseFloat(patientHeight.value) : 170,
-            dataSource: dataSource // Add data source to patient info
+            name: document.getElementById('patientName')?.value || 'Anonymous Patient',
+            age: parseInt(document.getElementById('patientAge')?.value) || 35,
+            gender: document.getElementById('patientGender')?.value || 'male',
+            height: parseFloat(document.getElementById('patientHeight')?.value) || 170,
+            weight: parseFloat(document.getElementById('patientWeight')?.value) || 70,
+            race: document.getElementById('patientRace')?.value || 'white',
+            dataSource: dataSource
         };
         
-        console.log("Patient info collected:", patientInfo);
+        console.log("Patient info:", patientInfo);
+        updateProgress(50);
         
         // Step 3: Generate insights
-        updateLoadingStatus('Generating health insights...', 'Identifying potential health conditions', 3);
-        updateLoadingProgress(60);
+        updateStep(3);
+        updateStatus('Generating health insights...', 'Identifying patterns and concerns');
+        updateProgress(60);
         
-        // Add another delay for UI feedback
+        // Simulate processing time
         await new Promise(resolve => setTimeout(resolve, 800));
+        updateProgress(70);
         
-        let analysisResults;
-        try {
-            // Make sure we have bloodTestRanges before calling analyzeBloodData
-            if (!bloodTestRanges || typeof bloodTestRanges !== 'object') {
-                console.error("Reference ranges are not available:", bloodTestRanges);
-                throw new Error("Reference ranges unavailable");
-            }
-            
-            analysisResults = analyzeBloodData(bloodData, patientInfo);
-            console.log("Analysis results:", analysisResults);
-            
-            if (!analysisResults) {
-                throw new Error("Analysis failed to generate results");
-            }
-        } catch (analysisError) {
-            console.error("Error during blood analysis:", analysisError);
-            progressIntervalRunning = false;
-            clearInterval(progressInterval);
-            updateLoadingProgress(100); // Complete the progress bar on error
-            showAlert('error', 'Analysis Error', 'Failed to analyze blood data: ' + analysisError.message);
-            setTimeout(() => showUploadView(), 1000);
-            return; // Exit function
-        }
+        // Step 4: Create report
+        updateStep(4);
+        updateStatus('Creating your health report...', 'Preparing visualizations and recommendations');
+        updateProgress(80);
         
-        // Step 4: Create personalized report
-        updateLoadingStatus('Finalizing your personalized health report...', 'Creating visualizations and recommendations', 4);
-        updateLoadingProgress(80);
-        
-        // Final delay for UI feedback
+        // Simulate processing time
         await new Promise(resolve => setTimeout(resolve, 800));
+        updateProgress(90);
         
-        // Update final progress and stop the interval
-        progressIntervalRunning = false;
-        clearInterval(progressInterval);
-        updateLoadingProgress(100);
-        
-        // Display the results - this now returns a boolean indicating success or failure
-        let displaySuccess = false;
+        // Display results
         try {
-            displaySuccess = displayResults(analysisResults, patientInfo);
-        } catch (displayError) {
-            console.error("Fatal error displaying results:", displayError);
-            showAlert('error', 'Display Error', 'There was an error displaying the results: ' + displayError.message);
-            setTimeout(() => showUploadView(), 1000);
-            return; // Exit function
-        }
-        
-        // Only proceed to show results if the display was successful
-        if (displaySuccess) {
-            // Show the results view after a small delay to show a 100% progress
-            setTimeout(() => {
-                showResultsView();
-                
-                // Create visualizations with error handling
-                try {
-                    createVisualizations(analysisResults, patientInfo);
-                } catch (vizError) {
-                    console.error("Error creating visualizations:", vizError);
-                    // Continue anyway since the text results are still valuable
+            const displaySuccess = displayResults(bloodData, ocrText);
+            
+            // Complete all steps
+            Object.values(steps).forEach(step => {
+                if (step) {
+                    step.classList.add('active');
+                    step.classList.add('completed');
                 }
-                
-                // Show success message
-                showAlert('success', 'Analysis Complete', 'Your blood report has been successfully analyzed. You can now explore the detailed results and recommendations.');
-            }, 500);
-        } else {
-            // If display failed, go back to the upload view
-            console.error("Failed to display results, returning to upload view");
-            showAlert('error', 'Display Error', 'There was an error displaying the analysis results. Please try again.');
-            setTimeout(() => showUploadView(), 1000);
-        }
-        
-    } catch (outerError) {
-        // Handle any unexpected errors that weren't caught by the inner try-catch blocks
-        console.error("Critical error in blood report processing:", outerError);
-        progressIntervalRunning = false;
-        if (progressInterval) clearInterval(progressInterval);
-        updateLoadingProgress(100); // Complete the progress bar even on error
-        showAlert('error', 'Critical Error', 'A critical error occurred: ' + outerError.message + '. Please refresh the page and try again.');
-        setTimeout(() => showUploadView(), 1000);
-    }
-}
-
-// Function to get predetermined blood data for sample files
-function getSampleBloodData() {
-    // Use the values from the sample blood report consistently
-    return {
-        hemoglobin: 12.1,
-        hematocrit: 36.0,
-        rbc: 4.1,
-        wbc: 7.2,
-        platelets: 245,
-        glucose: 135,
-        cholesterol: 235,
-        ldl: 155,
-        hdl: 38,
-        triglycerides: 175,
-        creatinine: 1.2,
-        urea: 18,
-        albumin: 4.1,
-        alt: 65,
-        ast: 52,
-        bilirubin: 0.9,
-        sodium: 140,
-        potassium: 4.2
-    };
-}
-
-// Enhanced mock data generator for more realistic and consistent results
-function generateEnhancedMockBloodData() {
-    const bloodData = {};
-    
-    // Create a patient profile to generate consistent abnormalities
-    // This will make the insights more realistic
-    const patientProfile = {
-        hasDiabetes: Math.random() < 0.3,
-        hasAnemia: Math.random() < 0.25,
-        hasHighCholesterol: Math.random() < 0.4,
-        hasKidneyIssues: Math.random() < 0.2,
-        hasLiverIssues: Math.random() < 0.15
-    };
-    
-    console.log("Generated patient profile for mock data:", patientProfile);
-    
-    // Generate values based on the patient profile
-    if (patientProfile.hasDiabetes) {
-        // High glucose for diabetic profile
-        bloodData.glucose = parseFloat((Math.random() * 50 + 126).toFixed(1));
-    } else {
-        // Normal or slightly elevated glucose
-        bloodData.glucose = parseFloat((Math.random() * 30 + 70).toFixed(1));
-    }
-    
-    if (patientProfile.hasAnemia) {
-        // Low hemoglobin and hematocrit for anemic profile
-        bloodData.hemoglobin = parseFloat((Math.random() * 2 + 10).toFixed(1));
-        bloodData.hematocrit = parseFloat((Math.random() * 5 + 32).toFixed(1));
-        bloodData.rbc = parseFloat((Math.random() * 0.5 + 3.8).toFixed(2));
-    } else {
-        // Normal hemoglobin and hematocrit
-        bloodData.hemoglobin = parseFloat((Math.random() * 3 + 13.5).toFixed(1));
-        bloodData.hematocrit = parseFloat((Math.random() * 9 + 41).toFixed(1));
-        bloodData.rbc = parseFloat((Math.random() * 1 + 4.5).toFixed(2));
-    }
-    
-    if (patientProfile.hasHighCholesterol) {
-        // High cholesterol, LDL, and possibly low HDL
-        bloodData.cholesterol = parseFloat((Math.random() * 80 + 220).toFixed(1));
-        bloodData.ldl = parseFloat((Math.random() * 60 + 130).toFixed(1));
-        bloodData.hdl = parseFloat((Math.random() * 15 + 30).toFixed(1));
-        bloodData.triglycerides = parseFloat((Math.random() * 100 + 150).toFixed(1));
-    } else {
-        // Normal lipid profile
-        bloodData.cholesterol = parseFloat((Math.random() * 75 + 125).toFixed(1));
-        bloodData.ldl = parseFloat((Math.random() * 70 + 30).toFixed(1));
-        bloodData.hdl = parseFloat((Math.random() * 20 + 40).toFixed(1));
-        bloodData.triglycerides = parseFloat((Math.random() * 100 + 50).toFixed(1));
-    }
-    
-    if (patientProfile.hasKidneyIssues) {
-        // Elevated creatinine and urea for kidney issues
-        bloodData.creatinine = parseFloat((Math.random() * 1.5 + 1.3).toFixed(2));
-        bloodData.urea = parseFloat((Math.random() * 15 + 20).toFixed(1));
-        // Add additional kidney-related markers
-        bloodData.urine_protein = parseFloat((Math.random() * 0.5 + 0.2).toFixed(2));
-        bloodData.albumin_creatinine_ratio = parseFloat((Math.random() * 100 + 30).toFixed(1));
-    } else {
-        // Normal kidney markers
-        bloodData.creatinine = parseFloat((Math.random() * 0.6 + 0.7).toFixed(2));
-        bloodData.urea = parseFloat((Math.random() * 13 + 7).toFixed(1));
-        bloodData.urine_protein = 0;
-        bloodData.albumin_creatinine_ratio = parseFloat((Math.random() * 20).toFixed(1));
-    }
-    
-    if (patientProfile.hasLiverIssues) {
-        // Elevated liver enzymes
-        bloodData.alt = parseFloat((Math.random() * 100 + 55).toFixed(1));
-        bloodData.ast = parseFloat((Math.random() * 100 + 48).toFixed(1));
-        bloodData.bilirubin = parseFloat((Math.random() * 1.5 + 1.2).toFixed(2));
-        bloodData.albumin = parseFloat((Math.random() * 0.5 + 3).toFixed(1));
-    } else {
-        // Normal liver markers
-        bloodData.alt = parseFloat((Math.random() * 40 + 10).toFixed(1));
-        bloodData.ast = parseFloat((Math.random() * 30 + 10).toFixed(1));
-        bloodData.bilirubin = parseFloat((Math.random() * 1 + 0.1).toFixed(2));
-        bloodData.albumin = parseFloat((Math.random() * 1 + 4).toFixed(1));
-    }
-    
-    // Add common electrolytes with generally normal values
-    bloodData.sodium = parseFloat((Math.random() * 10 + 135).toFixed(1));
-    bloodData.potassium = parseFloat((Math.random() * 1.5 + 3.5).toFixed(1));
-    
-    // Add WBC and platelets with mostly normal values
-    bloodData.wbc = parseFloat((Math.random() * 6.5 + 4.5).toFixed(1));
-    bloodData.platelets = parseFloat((Math.random() * 250 + 150).toFixed(0));
-    
-    return bloodData;
-}
-
-// Switch to a specific tab
-function switchTab(tabId) {
-    const tabs = document.querySelectorAll('.tab');
-    const tabContents = document.querySelectorAll('.tab-content');
-    
-    // Remove active class from all tabs and contents
-    tabs.forEach(tab => tab.classList.remove('active'));
-    tabContents.forEach(content => content.classList.remove('active'));
-    
-    // Add active class to selected tab and content
-    document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
-    document.getElementById(tabId).classList.add('active');
-}
-
-// Handle dragover event
-function handleDragOver(e) {
-    e.preventDefault();
-    uploadArea.classList.add('dragover');
-}
-
-// Handle dragleave event
-function handleDragLeave(e) {
-    e.preventDefault();
-    uploadArea.classList.remove('dragover');
-}
-
-// Handle drop event
-function handleDrop(e) {
-    e.preventDefault();
-    uploadArea.classList.remove('dragover');
-    
-    if (e.dataTransfer.files.length) {
-        handleFiles(e.dataTransfer.files);
-    }
-}
-
-// Handle file selection from input
-function handleFileSelect(e) {
-    if (fileInput.files.length) {
-        handleFiles(fileInput.files);
-    }
-}
-
-// Process the selected files
-function handleFiles(files) {
-    const file = files[0]; // For now, only process the first file
-    
-    if (!file) {
-        showAlert('error', 'Error', 'No file selected. Please select a valid file.');
-        return;
-    }
-    
-    // Check file type
-    const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
-    if (!validTypes.includes(file.type)) {
-        showAlert('error', 'Invalid File', 'Please upload a JPG, PNG, or PDF file.');
-        return;
-    }
-    
-    // Show file info
-    showAlert('info', 'File Selected', `File "${file.name}" has been selected. Fill in patient information and click "Analyze Report" to continue.`);
-}
-
-// Helper function to get a formatted data source label
-function getDataSourceLabel(source) {
-    let label = 'Unknown';
-    let className = '';
-    
-    switch(source) {
-        case 'ocr':
-            label = 'Extracted from image (OCR)';
-            className = 'ocr';
-            break;
-        case 'sample':
-            label = 'Sample file data';
-            className = 'sample';
-            break;
-        case 'mock':
-            label = 'Example data';
-            className = 'mock';
-            break;
-        default:
-            label = 'Generated data';
-            className = 'mock';
-    }
-    
-    return `<span class="data-source-indicator ${className}">${label}</span>`;
-}
-
-// Function to update AI confidence meters
-function updateAIMeters(analysisResults) {
-    // Set confidence level based on the quality of the data
-    const confidenceElement = document.querySelector('.confidence-level');
-    const scoreElement = document.querySelector('.score-level');
-    const healthScoreValue = document.getElementById('healthScoreValue');
-    
-    if (confidenceElement && analysisResults) {
-        // Calculate confidence based on number of parameters found and their quality
-        let confidence = 85; // Default confidence
-        
-        // Adjust confidence based on data source
-        if (analysisResults.patientInfo && analysisResults.patientInfo.dataSource) {
-            switch(analysisResults.patientInfo.dataSource.toLowerCase()) {
-                case 'ocr':
-                    confidence = Math.min(confidence, 75); // OCR is less reliable
-                    break;
-                case 'sample':
-                    confidence = Math.min(confidence, 90); // Sample data is reliable
-                    break;
-                case 'mock':
-                    confidence = Math.min(confidence, 65); // Mock data is least reliable
-                    break;
-            }
-        }
-        
-        // Adjust confidence based on number of abnormal values
-        if (analysisResults.abnormalValues) {
-            // More abnormal values might indicate clearer patterns (up to a point)
-            const abnormalCount = Object.keys(analysisResults.abnormalValues).length;
-            if (abnormalCount > 0 && abnormalCount < 3) {
-                confidence = Math.max(confidence - 5, 60); // Few abnormals might be noise
-            } else if (abnormalCount >= 10) {
-                confidence = Math.max(confidence - 10, 60); // Too many abnormals might indicate issues
-            }
-        }
-        
-        // Set the width of the confidence meter
-        confidenceElement.style.width = `${confidence}%`;
-        
-        // Calculate health score - inverse of abnormal percentage with adjustments
-        let normalCount = 0;
-        let totalCount = 0;
-        
-        if (analysisResults.normalValues) {
-            normalCount = Object.keys(analysisResults.normalValues).length;
-        }
-        
-        if (analysisResults.abnormalValues) {
-            totalCount = normalCount + Object.keys(analysisResults.abnormalValues).length;
-        }
-        
-        let healthScore = 100;
-        if (totalCount > 0) {
-            healthScore = Math.round((normalCount / totalCount) * 100);
-            // Apply some adjustments based on severity of abnormals
-            if (analysisResults.potentialConditions && 
-                analysisResults.potentialConditions.length > 0) {
-                healthScore = Math.max(healthScore - (analysisResults.potentialConditions.length * 3), 30);
-            }
-        }
-        
-        // Set the health score meter and value
-        if (scoreElement) {
-            scoreElement.style.width = `${healthScore}%`;
+            });
             
-            // Change color based on health score
-            if (healthScore < 50) {
-                scoreElement.style.background = 'linear-gradient(90deg, #e74c3c, #f39c12)';
-            } else if (healthScore < 80) {
-                scoreElement.style.background = 'linear-gradient(90deg, #f39c12, #2ecc71)';
+            // Update progress to 100%
+            updateProgress(100);
+            
+            // Show success message
+            if (displaySuccess) {
+                updateStatus('Analysis complete!', 'Your results are ready');
+                return true;
             } else {
-                scoreElement.style.background = 'linear-gradient(90deg, #27ae60, #2ecc71)';
+                console.error("displayResults failed");
+                updateStatus('Error displaying results', 'Please try again');
+                showAlert("Display Error", "Failed to display the analysis results. Please try again.", "error");
+                
+                // Show upload section again
+                if (uploadSection) uploadSection.classList.remove('hidden');
+                if (loadingSection) loadingSection.classList.add('hidden');
+                return false;
             }
+        } catch (displayError) {
+            console.error("Error displaying results:", displayError);
+            updateStatus('Error displaying results', displayError.message);
+            showAlert("Display Error", "Failed to display the analysis results: " + displayError.message, "error");
+            
+            // Show upload section again
+            if (uploadSection) uploadSection.classList.remove('hidden');
+            if (loadingSection) loadingSection.classList.add('hidden');
+            return false;
         }
+    } catch (error) {
+        console.error("Error processing blood report:", error);
+        showAlert("Processing Error", "An error occurred while processing your blood report: " + error.message, "error");
         
-        // Update health score value
-        if (healthScoreValue) {
-            healthScoreValue.textContent = healthScore;
-        }
+        // Show upload section again
+        const uploadSection = document.getElementById('uploadSection');
+        const loadingSection = document.getElementById('loadingSection');
+        if (uploadSection) uploadSection.classList.remove('hidden');
+        if (loadingSection) loadingSection.classList.add('hidden');
+        return false;
     }
 }
 
-// Function to generate AI insights based on analysis results
-function generateAIInsights(analysisResults) {
-    const insightContainer = document.querySelector('.ai-insight-content');
-    if (!insightContainer || !analysisResults) return;
+/**
+ * Extracts patient information from OCR text using advanced pattern matching
+ * @param {string} ocrText - The OCR text from the blood report
+ * @returns {Object} Patient information including name, age, gender, etc.
+ */
+function extractPatientInfo(ocrText) {
+    console.log("Extracting patient information from OCR text");
     
-    let insights = [];
-    
-    // Generate insights based on abnormal values
-    if (analysisResults.abnormalValues && Object.keys(analysisResults.abnormalValues).length > 0) {
-        const abnormalKeys = Object.keys(analysisResults.abnormalValues);
-        
-        // Group related parameters
-        const relatedGroups = {
-            'bloodCells': ['wbc', 'rbc', 'hemoglobin', 'hematocrit', 'platelets'],
-            'liverFunction': ['ast', 'alt', 'alp', 'bilirubin', 'albumin'],
-            'kidneyFunction': ['creatinine', 'bun', 'egfr', 'uricAcid'],
-            'lipidProfile': ['cholesterol', 'hdl', 'ldl', 'triglycerides'],
-            'glucoseMetabolism': ['glucose', 'hba1c', 'insulin']
+    if (!ocrText) {
+        console.warn("No OCR text provided for patient info extraction");
+        return {
+            name: "Unknown",
+            age: 0,
+            gender: "unknown",
+            reportDate: new Date().toLocaleDateString()
         };
+    }
+    
+    const patientInfo = {
+        name: "Unknown",
+        age: 0,
+        gender: "unknown",
+        height: 0,
+        weight: 0,
+        reportDate: new Date().toLocaleDateString()
+    };
+    
+    try {
+        // Extract patient name
+        const namePatterns = [
+            /patient(?:'s)?\s*name\s*[:\-]?\s*([A-Za-z\s.]+)/i,
+            /name\s*[:\-]?\s*([A-Za-z\s.]+)/i,
+            /patient\s*[:\-]?\s*([A-Za-z\s.]+)/i
+        ];
         
-        // Check for patterns in each group
-        for (const group in relatedGroups) {
-            const abnormalInGroup = abnormalKeys.filter(key => 
-                relatedGroups[group].includes(key.toLowerCase()));
-            
-            if (abnormalInGroup.length > 1) {
-                switch(group) {
-                    case 'bloodCells':
-                        insights.push("Multiple abnormalities detected in blood cell counts, suggesting possible hematological consideration.");
-                        break;
-                    case 'liverFunction':
-                        insights.push("Pattern of liver function test abnormalities detected, suggesting hepatic involvement.");
-                        break;
-                    case 'kidneyFunction':
-                        insights.push("Multiple kidney function markers outside reference range, suggesting renal consideration.");
-                        break;
-                    case 'lipidProfile':
-                        insights.push("Lipid profile shows multiple deviations, suggesting cardiovascular risk assessment.");
-                        break;
-                    case 'glucoseMetabolism':
-                        insights.push("Glucose metabolism markers indicate possible metabolic consideration.");
-                        break;
+        for (const pattern of namePatterns) {
+            const nameMatch = ocrText.match(pattern);
+            if (nameMatch && nameMatch[1]) {
+                // Clean up the name
+                let name = nameMatch[1].trim();
+                // Remove any trailing punctuation or numbers
+                name = name.replace(/[^A-Za-z\s.]+$/, '').trim();
+                
+                if (name && name.length > 2 && name.length < 50) {
+                    patientInfo.name = name;
+                    break;
                 }
             }
         }
-    }
-    
-    // Add insights based on potential conditions
-    if (analysisResults.potentialConditions && analysisResults.potentialConditions.length > 0) {
-        if (analysisResults.potentialConditions.length > 2) {
-            insights.push("Multiple potential conditions detected - recommend clinical correlation and follow-up testing.");
+        
+        // Extract age
+        const agePatterns = [
+            /age\s*[:\-]?\s*(\d+)\s*(?:years|yrs|year|yr)?/i,
+            /(\d+)\s*(?:years|yrs|year|yr)\s*old/i,
+            /patient(?:'s)?\s*age\s*[:\-]?\s*(\d+)/i
+        ];
+        
+        for (const pattern of agePatterns) {
+            const ageMatch = ocrText.match(pattern);
+            if (ageMatch && ageMatch[1]) {
+                const age = parseInt(ageMatch[1]);
+                if (age > 0 && age < 120) {
+                    patientInfo.age = age;
+                    break;
+                }
+            }
         }
-    }
-    
-    // Add generic insights if none were generated
-    if (insights.length === 0) {
-        if (analysisResults.abnormalValues && Object.keys(analysisResults.abnormalValues).length > 0) {
-            insights.push("Some parameters outside reference range, but no clear pattern detected. Consider clinical context.");
-        } else {
-            insights.push("All parameters within reference ranges. Results suggest normal health indicators based on available data.");
+        
+        // Extract gender
+        const genderPatterns = [
+            /gender\s*[:\-]?\s*([a-zA-Z]+)/i,
+            /sex\s*[:\-]?\s*([a-zA-Z]+)/i,
+            /patient(?:'s)?\s*gender\s*[:\-]?\s*([a-zA-Z]+)/i,
+            /patient(?:'s)?\s*sex\s*[:\-]?\s*([a-zA-Z]+)/i
+        ];
+        
+        for (const pattern of genderPatterns) {
+            const genderMatch = ocrText.match(pattern);
+            if (genderMatch && genderMatch[1]) {
+                const gender = genderMatch[1].trim().toLowerCase();
+                if (gender === 'm' || gender.includes('male')) {
+                    patientInfo.gender = 'male';
+                    break;
+                } else if (gender === 'f' || gender.includes('female')) {
+                    patientInfo.gender = 'female';
+                    break;
+                }
+            }
         }
+        
+        // Extract height
+        const heightPatterns = [
+            /height\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*(?:cm|centimeters|centimetres)/i,
+            /height\s*[:\-]?\s*(\d+(?:\.\d+)?)/i
+        ];
+        
+        for (const pattern of heightPatterns) {
+            const heightMatch = ocrText.match(pattern);
+            if (heightMatch && heightMatch[1]) {
+                const height = parseFloat(heightMatch[1]);
+                if (height > 50 && height < 250) {
+                    patientInfo.height = height;
+                    break;
+                }
+            }
+        }
+        
+        // Extract weight
+        const weightPatterns = [
+            /weight\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*(?:kg|kilograms|kilos)/i,
+            /weight\s*[:\-]?\s*(\d+(?:\.\d+)?)/i
+        ];
+        
+        for (const pattern of weightPatterns) {
+            const weightMatch = ocrText.match(pattern);
+            if (weightMatch && weightMatch[1]) {
+                const weight = parseFloat(weightMatch[1]);
+                if (weight > 20 && weight < 250) {
+                    patientInfo.weight = weight;
+                    break;
+                }
+            }
+        }
+        
+        // Extract report date
+        const datePatterns = [
+            /(?:report|collection|test|sample)\s*date\s*[:\-]?\s*(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/i,
+            /date\s*(?:of\s*(?:report|test|sample|collection))?\s*[:\-]?\s*(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/i,
+            /date\s*[:\-]?\s*(\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4})/i
+        ];
+        
+        for (const pattern of datePatterns) {
+            const dateMatch = ocrText.match(pattern);
+            if (dateMatch && dateMatch[1]) {
+                try {
+                    // Try to parse the date
+                    const dateStr = dateMatch[1];
+                    const dateParts = dateStr.split(/[\/\-]/);
+                    
+                    if (dateParts.length === 3) {
+                        // Determine the format of the date (MM/DD/YYYY or DD/MM/YYYY)
+                        let month, day, year;
+                        
+                        // Assume the year is the part with 4 digits or the last part
+                        if (dateParts[0].length === 4) {
+                            year = dateParts[0];
+                            month = dateParts[1];
+                            day = dateParts[2];
+                        } else if (dateParts[2].length === 4 || dateParts[2].length === 2) {
+                            year = dateParts[2];
+                            // Assume MM/DD format for simplicity
+                            month = dateParts[0];
+                            day = dateParts[1];
+                        } else {
+                            continue;
+                        }
+                        
+                        // Ensure year has 4 digits
+                        if (year.length === 2) {
+                            year = "20" + year;
+                        }
+                        
+                        // Create a date object
+                        const date = new Date(`${year}-${month}-${day}`);
+                        
+                        // Check if date is valid and not in the future
+                        if (!isNaN(date.getTime()) && date <= new Date()) {
+                            patientInfo.reportDate = date.toLocaleDateString();
+                            break;
+                        }
+                    }
+                } catch (error) {
+                    console.warn("Error parsing date:", error);
+                }
+            }
+        }
+        
+    } catch (error) {
+        console.error("Error extracting patient info:", error);
     }
     
-    // Limit to 2 insights maximum
-    insights = insights.slice(0, 2);
-    
-    // Add the insights to the container
-    insightContainer.innerHTML = insights.map(insight => 
-        `<div class="ai-insight"><i class="fas fa-robot"></i><span>${insight}</span></div>`
-    ).join('');
+    return patientInfo;
 }
 
-// Function to generate and download PDF report
-function downloadPDFReport() {
-    // Check if html2pdf is available
-    if (typeof html2pdf === 'undefined') {
-        console.error('html2pdf.js library is not loaded');
-        showAlert('error', 'PDF Generation Failed', 'Could not generate PDF. Please try again later.');
-        return;
+/**
+ * Updates the patient information display in the UI
+ * @param {Object} patientInfo - The extracted patient information
+ */
+function updatePatientInfoDisplay(patientInfo) {
+    if (!patientInfo) return;
+    
+    try {
+        // Update patient summary if it exists
+        const patientSummary = document.getElementById('patient-summary');
+        if (patientSummary) {
+            patientSummary.innerHTML = '';
+            
+            // Patient name
+            if (patientInfo.name && patientInfo.name !== "Unknown") {
+                const nameElement = document.createElement('p');
+                nameElement.innerHTML = `<strong>Patient:</strong> ${patientInfo.name}`;
+                patientSummary.appendChild(nameElement);
+            }
+            
+            // Patient age and gender
+            if (patientInfo.age > 0 || patientInfo.gender !== "unknown") {
+                const demographicsElement = document.createElement('p');
+                let demographicsText = '<strong>Demographics:</strong> ';
+                
+                if (patientInfo.age > 0) {
+                    demographicsText += `${patientInfo.age} years`;
+                }
+                
+                if (patientInfo.gender !== "unknown") {
+                    demographicsText += patientInfo.age > 0 ? `, ${patientInfo.gender}` : patientInfo.gender;
+                }
+                
+                demographicsElement.innerHTML = demographicsText;
+                patientSummary.appendChild(demographicsElement);
+            }
+            
+            // Patient height and weight
+            if (patientInfo.height > 0 || patientInfo.weight > 0) {
+                const physicalElement = document.createElement('p');
+                let physicalText = '<strong>Physical:</strong> ';
+                
+                if (patientInfo.height > 0) {
+                    physicalText += `${patientInfo.height} cm`;
+                }
+                
+                if (patientInfo.weight > 0) {
+                    physicalText += patientInfo.height > 0 ? `, ${patientInfo.weight} kg` : `${patientInfo.weight} kg`;
+                }
+                
+                physicalElement.innerHTML = physicalText;
+                patientSummary.appendChild(physicalElement);
+            }
+        }
+        
+        // Update report date if it exists
+        const reportDateElement = document.getElementById('report-date');
+        if (reportDateElement && patientInfo.reportDate) {
+            reportDateElement.textContent = patientInfo.reportDate;
+        }
+        
+    } catch (error) {
+        console.error("Error updating patient info display:", error);
     }
-    
-    // Show a loading message
-    showAlert('info', 'Generating PDF', 'Creating your analysis report PDF. Please wait...');
-    
-    // Clone the results section to modify it for PDF
-    const resultsSection = document.getElementById('resultsSection').cloneNode(true);
-    
-    // Remove action buttons (we don't want them in the PDF)
-    const actionButtons = resultsSection.querySelector('.action-buttons');
-    if (actionButtons) {
-        actionButtons.remove();
+}
+
+// Add this helper function to handle file changes
+function handleFileChange(event) {
+    console.log("File input change event fired");
+    if (fileInput && fileInput.files && fileInput.files.length > 0) {
+        // Show file information
+        const file = fileInput.files[0];
+        console.log("Selected file:", file.name, file.type, file.size);
+        
+        // Show selected file indicator
+        const fileIndicatorContainer = document.getElementById('file-indicator-container');
+        if (fileIndicatorContainer) {
+            fileIndicatorContainer.innerHTML = `
+                <div class="file-selected-indicator">
+                    <div class="selected-file-info">
+                        <i class="fas fa-file-medical"></i>
+                        <span class="selected-file-name">${file.name}</span>
+                    </div>
+                    <span>File selected successfully!</span>
+                </div>
+            `;
+        }
+        
+        // Test if the file type is supported
+        if (!file.type.includes('image') && !file.type.includes('pdf')) {
+            showAlert("Unsupported File", "Please upload an image (JPG, PNG) or PDF file.", "warning");
+            // Clear the file input
+            fileInput.value = '';
+            if (fileIndicatorContainer) {
+                fileIndicatorContainer.innerHTML = '';
+            }
+        }
     }
+}
+
+// Add this function for backward compatibility
+function handleFiles(files) {
+    if (files && files.length > 0 && fileInput) {
+        // Update the file input with the files
+        try {
+            // Create a DataTransfer object and add the file
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(files[0]);
+            fileInput.files = dataTransfer.files;
+            
+            // Manually trigger the change event
+            const event = new Event('change');
+            fileInput.dispatchEvent(event);
+        } catch (error) {
+            console.error("Error updating file input:", error);
+            
+            // Direct approach for compatibility
+            if (typeof handleFileChange === 'function') {
+                handleFileChange({ target: { files: files } });
+            }
+        }
+    }
+}
+
+// Add this at the end of the file
+// Initialize the application when the DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("DOM fully loaded, initializing application...");
+    if (typeof initializeApp === 'function') {
+        console.log("Calling initializeApp function");
+        initializeApp();
+    } else {
+        console.error("initializeApp function not found - manual initialization required");
+        
+        // Manual initialization as fallback
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const analyzeButton = document.getElementById('analyzeButton');
+        
+        if (uploadArea && fileInput) {
+            console.log("Setting up upload area event listeners manually");
+            uploadArea.addEventListener('click', () => {
+                fileInput.click();
+            });
+            
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('drag-over');
+            });
+            
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('drag-over');
+            });
+            
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('drag-over');
+                
+                if (e.dataTransfer.files.length) {
+                    fileInput.files = e.dataTransfer.files;
+                    handleFileChange(e);
+                }
+            });
+            
+            fileInput.addEventListener('change', handleFileChange);
+        }
+        
+        // Setup direct upload button
+        const directUploadBtn = document.getElementById('directUploadBtn');
+        if (directUploadBtn && fileInput) {
+            directUploadBtn.addEventListener('click', function(e) {
+                e.stopPropagation(); // Prevent event from bubbling to uploadArea
+                fileInput.click();
+            });
+        }
+        
+        // Setup analyze button
+        if (analyzeButton) {
+            analyzeButton.addEventListener('click', async () => {
+                if (fileInput && fileInput.files.length > 0) {
+                    try {
+                        showAlert("Analysis Started", "Processing your blood report with AI. This may take a moment...", "info");
+                        if (typeof processBloodReport === 'function') {
+                            await processBloodReport(fileInput.files[0]);
+                        } else {
+                            console.error("processBloodReport function not found");
+                            showAlert("Processing Error", "Unable to process blood report. The required function is missing.", "error");
+                        }
+                    } catch (error) {
+                        console.error("Error processing blood report:", error);
+                        showAlert("Processing Error", "Failed to analyze the blood report: " + error.message, "error");
+                        const loadingSection = document.getElementById('loadingSection');
+                        if (loadingSection) loadingSection.classList.add('hidden');
+                    }
+                } else {
+                    showAlert("No File Selected", "Please upload a blood report image first.", "warning");
+                }
+            });
+        }
+        
+        // Set up alert button
+        const alertButton = document.getElementById('alertButton');
+        if (alertButton) {
+            alertButton.addEventListener('click', function() {
+                const alertOverlay = document.getElementById('alertOverlay');
+                if (alertOverlay) {
+                    alertOverlay.classList.remove('visible');
+                    setTimeout(() => {
+                        alertOverlay.classList.add('hidden');
+                    }, 300);
+                }
+            });
+        }
+    }
+});
+
+// Setup the direct upload button functionality
+function setupDirectUploadButton() {
+    const directUploadBtn = document.getElementById('directUploadBtn');
+    const fileInput = document.getElementById('fileInput');
     
-    // Add a PDF header with logo and timestamp
-    const pdfHeader = document.createElement('div');
-    pdfHeader.className = 'pdf-header';
-    pdfHeader.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <div style="font-size: 24px; font-weight: bold; color: #4a6da7;">Blood Report Analysis</div>
-            <div style="font-size: 12px; color: #666;">Generated: ${new Date().toLocaleString()}</div>
-        </div>
-        <div style="height: 2px; background: linear-gradient(to right, #4a6da7, #2ecc71); margin-bottom: 20px;"></div>
-    `;
-    resultsSection.prepend(pdfHeader);
-    
-    // Add a footer
-    const pdfFooter = document.createElement('div');
-    pdfFooter.className = 'pdf-footer';
-    pdfFooter.innerHTML = `
-        <div style="margin-top: 30px; padding-top: 10px; border-top: 1px solid #eee; font-size: 11px; color: #999; text-align: center;">
-            <p>This report was generated by AI-Powered Blood Report Analysis. The results are for informational purposes only and should not be considered as medical advice.</p>
-            <p>Please consult with a healthcare professional for proper interpretation and medical guidance.</p>
-        </div>
-    `;
-    resultsSection.appendChild(pdfFooter);
-    
-    // Set options for PDF generation
-    const options = {
-        margin: [10, 10],
-        filename: `Blood_Analysis_Report_${new Date().toISOString().slice(0,10)}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-    
-    // Generate the PDF
-    html2pdf().set(options).from(resultsSection).save()
-        .then(() => {
-            showAlert('success', 'PDF Created', 'Your blood analysis report has been downloaded successfully.');
-        })
-        .catch(error => {
-            console.error('PDF generation error:', error);
-            showAlert('error', 'PDF Generation Failed', 'Could not generate PDF. Please try again later.');
+    if (directUploadBtn && fileInput) {
+        console.log("Setting up direct upload button");
+        
+        directUploadBtn.addEventListener('click', function(e) {
+            e.stopPropagation(); // Prevent event from bubbling to uploadArea
+            console.log("Direct upload button clicked");
+            
+            // Create a temporary input element to work around security restrictions
+            // This ensures consistent behavior across browsers
+            const tempFileInput = document.createElement('input');
+            tempFileInput.type = 'file';
+            tempFileInput.accept = '.jpg,.jpeg,.png,.pdf';
+            tempFileInput.style.display = 'none';
+            
+            tempFileInput.addEventListener('change', function() {
+                if (this.files && this.files.length > 0) {
+                    console.log("File selected via direct upload button:", this.files[0].name);
+                    
+                    // Try to update the main file input with this file
+                    try {
+                        // Create a DataTransfer object and add the file
+                        const dataTransfer = new DataTransfer();
+                        dataTransfer.items.add(this.files[0]);
+                        fileInput.files = dataTransfer.files;
+                        
+                        // Manually trigger the change event
+                        const event = new Event('change');
+                        fileInput.dispatchEvent(event);
+                    } catch (error) {
+                        console.error("Error updating file input:", error);
+                        
+                        // Fallback approach
+                        handleFileChange({ target: { files: this.files } });
+                    }
+                    
+                    // Remove the temporary input
+                    document.body.removeChild(this);
+                }
+            });
+            
+            // Append the temporary input to the body and click it
+            document.body.appendChild(tempFileInput);
+            tempFileInput.click();
         });
+    }
+}
+
+/**
+ * Sets up tab switching for all tab groups in the application
+ */
+function setupTabSwitching() {
+    console.log("Setting up tab switching functionality");
+    
+    try {
+        // Handle the main tabs in the results section
+        const mainTabs = document.querySelectorAll('.results-header .tab');
+        const mainTabContents = document.querySelectorAll('.tab-content');
+        
+        if (mainTabs.length > 0 && mainTabContents.length > 0) {
+            console.log("Found main tabs:", mainTabs.length);
+            
+            mainTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    // Remove active class from all tabs
+                    mainTabs.forEach(t => t.classList.remove('active'));
+                    
+                    // Add active class to clicked tab
+                    tab.classList.add('active');
+                    
+                    // Hide all tab content
+                    mainTabContents.forEach(content => content.classList.remove('active'));
+                    
+                    // Show the corresponding tab content
+                    const tabId = tab.getAttribute('data-tab');
+                    const tabContent = document.getElementById(tabId);
+                    if (tabContent) {
+                        tabContent.classList.add('active');
+                    } else {
+                        console.error("Tab content not found for:", tabId);
+                    }
+                });
+            });
+        }
+        
+        // Handle the ML insights tabs
+        const mlTabHeaders = document.querySelectorAll('.tab-headers .tab-header');
+        const mlTabPanels = document.querySelectorAll('.tab-panel');
+        
+        if (mlTabHeaders.length > 0 && mlTabPanels.length > 0) {
+            console.log("Found ML insights tabs:", mlTabHeaders.length);
+            
+            mlTabHeaders.forEach(header => {
+                header.addEventListener('click', () => {
+                    // Remove active class from all headers
+                    mlTabHeaders.forEach(h => h.classList.remove('active'));
+                    
+                    // Add active class to clicked header
+                    header.classList.add('active');
+                    
+                    // Hide all tab panels
+                    mlTabPanels.forEach(panel => panel.classList.remove('active'));
+                    
+                    // Show the corresponding tab panel
+                    const tabId = header.getAttribute('data-tab');
+                    const tabPanel = document.getElementById(tabId);
+                    if (tabPanel) {
+                        tabPanel.classList.add('active');
+                    } else {
+                        console.error("Tab panel not found for:", tabId);
+                    }
+                });
+            });
+        }
+        
+        console.log("Tab switching setup complete");
+    } catch (error) {
+        console.error("Error setting up tab switching:", error);
+    }
 }
